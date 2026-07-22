@@ -106,8 +106,11 @@ cd frontend && npm run build       # tsc -b && vite build
 cd frontend && npm run test        # vitest (watch mode); usar `npx vitest run` para un solo pase
 cd frontend && npm run lint        # oxlint
 
-# Todo el stack (pendiente: docker-compose.yml con Postgres)
-docker-compose up
+# Todo el stack (docker-compose.yml en la raíz: postgres + backend + frontend)
+cp .env.example .env   # solo la primera vez
+docker compose up -d
+docker compose down
+# frontend: http://localhost:5173 · backend/swagger: http://localhost:5000/swagger · postgres: localhost:5432
 ```
 
 **Notas de versiones (importante para futuras sesiones):**
@@ -122,6 +125,16 @@ docker-compose up
 - El template de Vite actual usa **oxlint** en vez de ESLint (`npm run lint` → `oxlint`).
 - `vite.config.ts` importa `defineConfig` desde `vitest/config` (no desde `vite`) para poder incluir
   el bloque `test: {...}` con tipado correcto.
+- `vitest run` sin tests devuelve **exit code 1** por defecto ("No test files found") — hay que usar
+  `--passWithNoTests` (así está en `frontend-ci.yml`) mientras no existan tests todavía. `dotnet test`
+  con proyectos de test vacíos, en cambio, sí devuelve exit code 0 de forma nativa.
+- El frontend se sirve en Docker vía Nginx (`frontend/nginx.conf`, con fallback a `index.html` para
+  el routing de React Router), no con `vite dev` — así el contenedor se parece al despliegue real
+  (Vercel sirviendo estáticos). `VITE_API_URL` se hornea en build time (build arg de Docker /
+  variable de entorno de Vite), no es una env var de runtime.
+- Stack completo verificado end-to-end con `docker compose build && docker compose up -d`: los 3
+  contenedores (postgres healthy, backend con Swagger en `/swagger`, frontend con Nginx) responden
+  correctamente. Backend aún no tiene DbContext real conectado a Postgres — eso llega en Fase 1.
 
 ## 6. Cómo trabajamos
 
@@ -176,16 +189,26 @@ docker-compose up
   estructura y dependencias base (según lo pactado: "antes de escribir la primera línea de lógica
   de negocio").
 
+- **Docker + CI completados (Fase 0 cerrada):** `docker-compose.yml` en la raíz con `postgres`
+  (16-alpine, healthcheck), `backend` (Dockerfile multi-stage SDK→aspnet runtime) y `frontend`
+  (Dockerfile multi-stage node build→Nginx). `.env.example` con las variables (credenciales de
+  Postgres, `JWT_SECRET`, `VITE_API_URL`). Verificado end-to-end: `docker compose build` +
+  `docker compose up -d` levanta los 3 servicios y responden por HTTP (frontend 200, backend
+  `/swagger` 200, postgres healthy).
+- Dos workflows de GitHub Actions (`.github/workflows/backend-ci.yml`,
+  `frontend-ci.yml`), cada uno disparado solo por cambios en su carpeta (`paths:`). Backend:
+  restore+build+test con .NET 8. Frontend: `npm ci` + lint (oxlint) + `vitest run --passWithNoTests`
+  + build. Todavía no se han empujado a GitHub para ver una ejecución real (no hay remoto
+  configurado en este repo local todavía).
+
 **En qué se está trabajando ahora mismo:**
-- Nada en curso. Quedan pendientes de Fase 0: `docker-compose.yml` con Postgres y el pipeline base
-  de GitHub Actions (lint+build). No se han abordado todavía porque el turno se centró en el
-  scaffolding de backend/frontend.
+- Nada en curso. Fase 0 (setup del proyecto) completa según `PROGRESS.md`.
 
 **Próximos pasos inmediatos:**
-1. Decidir y confirmar con Rafael si seguimos con `docker-compose.yml` (Postgres) + GitHub Actions
-   ahora, o si pasamos directamente a diseñar el modelo de dominio de Fase 1 (Facility/Lote,
-   EnvironmentalReading, Alert, User/Role) y dejamos Docker/CI para después.
+1. Diseñar el modelo de dominio inicial (Fase 1 MVP): entidades `Facility`/lote, `EnvironmentalReading`,
+   `Alert`, `User`/roles — antes de escribir el primer DbContext o controller.
 2. Confirmar la decisión pendiente de nombres de roles en inglés (`Admin`/`ShiftLead`/`Operator`) — ver §7.
-3. Diseñar el modelo de dominio inicial antes de escribir el primer DbContext o controller — Fase 1 del MVP.
+3. Crear el repo remoto en GitHub y hacer el primer push para verificar que los workflows de CI
+   corren de verdad (hasta ahora solo se ha validado localmente).
 
 **Bloqueos/problemas conocidos:** ninguno.

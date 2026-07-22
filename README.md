@@ -16,6 +16,18 @@ parameters, feeding, staff shifts and incident tracking.
 - **Testing:** xUnit + Moq (backend), Vitest + React Testing Library (frontend)
 - **Infra:** Docker + docker-compose, GitHub Actions CI
 
+## Running locally
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
+- Frontend: http://localhost:5173
+- Backend / Swagger: http://localhost:5000/swagger
+- Postgres: localhost:5432
+
 ## Status
 
-Repository scaffolding in progress. No runnable code yet — see `PROGRESS.md`.
+Backend and frontend are scaffolded (no domain/business logic yet) and verified to build and run
+together via Docker. See `PROGRESS.md` for the phase-by-phase checklist.

@@ -9,8 +9,8 @@ Checklist de avance por fase. Se actualiza en cada sesión (ver `CLAUDE.md` secc
 - [x] Definir estructura de carpetas frontend/backend
 - [x] Scaffold del proyecto .NET (solution + proyectos por capa + proyectos de test)
 - [x] Scaffold del proyecto Vite + React + TS + Tailwind
-- [ ] `docker-compose.yml` con Postgres para desarrollo local
-- [ ] Pipeline base de GitHub Actions (lint + build, sin despliegue todavía)
+- [x] `docker-compose.yml` con Postgres para desarrollo local
+- [x] Pipeline base de GitHub Actions (lint + build, sin despliegue todavía)
 
 ## Fase 1 — MVP
 
