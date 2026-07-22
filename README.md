@@ -14,6 +14,9 @@ design decision that mattered written down as it was made (see `CLAUDE.md`).
 Vercel, backend on Render, database on Neon. Demo credentials are intentionally public (see below);
 this is a portfolio piece meant to be explored, not a real operations tool with real data behind it.
 
+The UI is in Spanish (the language of the operators this tool is modeled on); this README stays in
+English for broader reach. Code, comments, and API stay in English throughout.
+
 ## Why this exists
 
 Three years running weekend shifts and covering as deputy operations lead at an aquaculture site —
@@ -157,6 +160,11 @@ The full log — every decision, with the reasoning and the date — lives in `C
   (`frontend/vercel.json`) — without it, every route but `/` 404'd on the real deployed URL. Found
   by hitting the live site with a headless browser after deploying, not assumed to "just work"
   because it worked in Docker.
+- **UI copy is Spanish, code stays English**: enum values from the API (`FacilityStatus`,
+  `EnvironmentalParameter`, `Role`, `AlertStatus`) are never shown to the user directly — each has a
+  `*_LABELS` map (e.g. `FACILITY_STATUS_LABELS`) next to its type definition translating it for
+  display, so the wire contract and variable/function names stay in English while nothing
+  user-facing does.
 
 ## Roadmap
 

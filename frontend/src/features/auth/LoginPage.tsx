@@ -22,7 +22,7 @@ export function LoginPage() {
       await login({ email, password })
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Invalid email or password.'))
+      setError(getApiErrorMessage(err, 'Correo electrónico o contraseña inválidos.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -32,12 +32,12 @@ export function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-slate-50">
       <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow-sm">
         <h1 className="mb-1 text-2xl font-semibold text-slate-800">AquaTrack</h1>
-        <p className="mb-6 text-sm text-slate-500">Sign in to manage your facilities.</p>
+        <p className="mb-6 text-sm text-slate-500">Iniciar sesión para gestionar las instalaciones.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-              Email
+              Correo electrónico
             </label>
             <input
               id="email"
@@ -52,7 +52,7 @@ export function LoginPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-slate-700">
-              Password
+              Contraseña
             </label>
             <input
               id="password"
@@ -72,7 +72,7 @@ export function LoginPage() {
             disabled={isSubmitting}
             className="w-full rounded-md bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-50"
           >
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
+            {isSubmitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </button>
         </form>
       </div>

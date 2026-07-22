@@ -392,6 +392,29 @@ docker compose down
     mismo bug de CORS que se encontró y arregló en local.
   - JWT secret de producción generado nuevo (no reutilizado del `.env` local) — 64 bytes aleatorios,
     solo vive como variable de entorno en Render.
+- **2026-07-22** — **UI del frontend traducida al español**, a pedido explícito de Rafael. Alcance:
+  todo el texto visible (labels, botones, mensajes de carga/error, encabezados de tabla) en los
+  componentes React. **No** se tradujo: código (nombres de variables/funciones/componentes,
+  comentarios — sigue la convención de §4), ni los mensajes que devuelve el backend (FluentValidation,
+  `DomainException`, `Result.Failure`) — esos siguen en inglés y pueden aparecer mezclados con la UI
+  en español si el backend rechaza algo con su propio mensaje (ej. "A facility named 'X' already
+  exists."). Traducir mensajes del backend queda pendiente como posible follow-up si llega a notarse
+  como un problema real, no se asumió como parte de este pedido.
+  - Los valores de los enums que vienen de la API (`FacilityStatus`, `FacilityType`, `Role`,
+    `AlertStatus`, `EnvironmentalParameter`) **no cambiaron** — siguen siendo `'Active'`, `'Admin'`,
+    etc., tal como los espera/devuelve el backend. Cada tipo tiene un mapa `*_LABELS` al lado de su
+    definición (`FACILITY_STATUS_LABELS`, `ROLE_LABELS`, `ALERT_STATUS_LABELS`, ampliando el patrón
+    que ya existía para `ENVIRONMENTAL_PARAMETER_LABELS`) que traduce el valor solo para mostrarlo;
+    el dato que viaja a la API nunca se toca.
+  - Verificado con navegador real (Playwright) contra el stack dockerizado completo, no solo tests —
+    en particular para confirmar que palabras en español más largas que sus equivalentes en inglés
+    (p. ej. "Instalaciones" vs. "Facilities") no rompieran el layout responsive que se arregló en la
+    sesión anterior. Sin problemas: 0 errores de consola, capturas limpias en desktop y en 390px.
+  - Los 17 tests de frontend que hacían `getByLabelText`/`getByRole(name: ...)` sobre texto en inglés
+    se actualizaron para buscar el texto en español nuevo — es la razón por la que estos tests son
+    tests de integración de UI y no solo de lógica: verifican lo que el usuario realmente ve.
+  - Capturas del README (`docs/screenshots/*.png`) regeneradas contra la UI en español para que la
+    documentación no quede desactualizada respecto a la app real.
 
 ## 8. Estado actual
 
@@ -399,7 +422,8 @@ docker compose down
 
 **Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Fase 1 MVP está terminada por
 completo**: funcionalidad (backend + frontend), pulido (README, responsive, accesibilidad) y
-**desplegada en vivo** — https://aquatrack-frontend-iota.vercel.app — ver `PROGRESS.md`. La app se
+**desplegada en vivo** — https://aquatrack-frontend-iota.vercel.app — ver `PROGRESS.md`. La UI del
+frontend está en español (código y mensajes del backend siguen en inglés — ver §7). La app se
 verificó por primera vez esta sesión contra un **navegador real** (Playwright headless, no solo
 `curl`), tanto en local como contra las URLs públicas ya desplegadas, lo que encontró y corrigió dos
 bugs reales que ningún test anterior había detectado: **CORS no estaba configurado** (la app nunca

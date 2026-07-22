@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useDashboardSummary } from './api'
 import { ENVIRONMENTAL_PARAMETER_LABELS } from '../../types/environmentalParameter'
+import { FACILITY_STATUS_LABELS } from '../../types/facility'
 
 function StatTile({ label, value, critical }: { label: string; value: number; critical?: boolean }) {
   return (
@@ -14,28 +15,28 @@ function StatTile({ label, value, critical }: { label: string; value: number; cr
 export function DashboardPage() {
   const { data: summary, isLoading, isError } = useDashboardSummary()
 
-  if (isLoading) return <p className="text-sm text-slate-500">Loading dashboard…</p>
-  if (isError || !summary) return <p className="text-sm text-red-600">Could not load the dashboard.</p>
+  if (isLoading) return <p className="text-sm text-slate-500">Cargando panel…</p>
+  if (isError || !summary) return <p className="text-sm text-red-600">No se pudo cargar el panel.</p>
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-800">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">Operational snapshot across all facilities.</p>
+        <h1 className="text-xl font-semibold text-slate-800">Panel</h1>
+        <p className="mt-1 text-sm text-slate-500">Resumen operativo de todas las instalaciones.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-        <StatTile label="Facilities" value={summary.totalFacilities} />
+        <StatTile label="Instalaciones" value={summary.totalFacilities} />
         {summary.facilitiesByStatus.map((s) => (
-          <StatTile key={s.status} label={s.status} value={s.count} />
+          <StatTile key={s.status} label={FACILITY_STATUS_LABELS[s.status]} value={s.count} />
         ))}
-        <StatTile label="Active alerts" value={summary.activeAlertsCount} critical />
+        <StatTile label="Alertas activas" value={summary.activeAlertsCount} critical />
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-slate-800">Active alerts</h2>
+        <h2 className="mb-2 text-sm font-semibold text-slate-800">Alertas activas</h2>
         {summary.activeAlerts.length === 0 ? (
-          <p className="text-sm text-slate-500">No active alerts across any facility.</p>
+          <p className="text-sm text-slate-500">No hay alertas activas en ninguna instalación.</p>
         ) : (
           <ul className="space-y-2">
             {summary.activeAlerts.map((alert) => (
@@ -47,7 +48,7 @@ export function DashboardPage() {
                   <span className="text-xs uppercase tracking-wide">{ENVIRONMENTAL_PARAMETER_LABELS[alert.parameter]}</span>
                 </div>
                 <p className="mt-0.5 text-xs">
-                  Reading: {alert.value} (expected {alert.thresholdMin}–{alert.thresholdMax})
+                  Lectura: {alert.value} (esperado {alert.thresholdMin}–{alert.thresholdMax})
                 </p>
               </li>
             ))}

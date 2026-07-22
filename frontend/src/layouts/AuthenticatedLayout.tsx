@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { ROLE_LABELS } from '../types/auth'
 
 const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-2 py-1 ${isActive ? 'bg-sky-100 text-sky-800' : 'text-slate-600 hover:bg-slate-100'}`
@@ -14,25 +15,25 @@ export function AuthenticatedLayout() {
           <span className="text-lg font-semibold text-slate-800">AquaTrack</span>
           <nav className="flex flex-wrap items-center gap-1 text-sm">
             <NavLink to="/" end className={navLinkClassName}>
-              Dashboard
+              Panel
             </NavLink>
             <NavLink to="/facilities" className={navLinkClassName}>
-              Facilities
+              Instalaciones
             </NavLink>
             <NavLink to="/thresholds" className={navLinkClassName}>
-              Thresholds
+              Umbrales
             </NavLink>
           </nav>
         </div>
         <div className="flex items-center justify-between gap-4 text-sm text-slate-600 sm:justify-end">
           <span className="truncate">
-            {user?.fullName} <span className="text-slate-400">·</span> {user?.role}
+            {user?.fullName} <span className="text-slate-400">·</span> {user && ROLE_LABELS[user.role]}
           </span>
           <button
             onClick={logout}
             className="shrink-0 rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-100"
           >
-            Sign out
+            Cerrar sesión
           </button>
         </div>
       </header>

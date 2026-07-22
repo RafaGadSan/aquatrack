@@ -61,7 +61,7 @@ describe('FacilitiesPage', () => {
     renderFacilitiesPage()
 
     expect(await screen.findByText('Cage 1')).toBeInTheDocument()
-    expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^nombre$/i)).toBeInTheDocument()
     // One combobox for the create form's "Type" field, one for the row's status control.
     expect(screen.getAllByRole('combobox')).toHaveLength(2)
   })
@@ -71,8 +71,8 @@ describe('FacilitiesPage', () => {
     renderFacilitiesPage()
 
     expect(await screen.findByText('Cage 1')).toBeInTheDocument()
-    expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/^nombre$/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
-    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.getByText('Activa')).toBeInTheDocument()
   })
 })

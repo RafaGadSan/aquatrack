@@ -70,16 +70,16 @@ describe('FacilityDetailPage', () => {
     await userEvent.click(screen.getByRole('link', { name: /go to cage a/i }))
     expect(await screen.findByText('Cage A')).toBeInTheDocument()
 
-    await userEvent.type(screen.getByLabelText(/temperature/i), '28')
-    await userEvent.type(screen.getByLabelText(/dissolved oxygen/i), '7')
-    await userEvent.type(screen.getByLabelText(/salinity/i), '30')
+    await userEvent.type(screen.getByLabelText(/temperatura/i), '28')
+    await userEvent.type(screen.getByLabelText(/oxígeno disuelto/i), '7')
+    await userEvent.type(screen.getByLabelText(/salinidad/i), '30')
     await userEvent.type(screen.getByLabelText(/^ph$/i), '7.5')
-    await userEvent.click(screen.getByRole('button', { name: /record/i }))
-    expect(await screen.findByText(/triggered 1 alert/i)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /registrar/i }))
+    expect(await screen.findByText(/disparó 1 alerta/i)).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('link', { name: /go to cage b/i }))
 
     expect(await screen.findByText('Cage B')).toBeInTheDocument()
-    expect(screen.queryByText(/triggered 1 alert/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/disparó 1 alerta/i)).not.toBeInTheDocument()
   })
 })

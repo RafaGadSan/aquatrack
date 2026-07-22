@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useCreateFacility } from './api'
 import { getApiErrorMessage } from '../../lib/apiError'
-import type { FacilityType } from '../../types/facility'
+import { FACILITY_TYPE_LABELS, type FacilityType } from '../../types/facility'
 
 const FACILITY_TYPES: FacilityType[] = ['Cage', 'Tank']
 
@@ -20,7 +20,7 @@ export function CreateFacilityForm() {
       setName('')
       setLocation('')
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not create the facility.'))
+      setError(getApiErrorMessage(err, 'No se pudo crear la instalación.'))
     }
   }
 
@@ -28,7 +28,7 @@ export function CreateFacilityForm() {
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
       <div>
         <label htmlFor="facility-name" className="block text-xs font-medium text-slate-600">
-          Name
+          Nombre
         </label>
         <input
           id="facility-name"
@@ -41,7 +41,7 @@ export function CreateFacilityForm() {
 
       <div>
         <label htmlFor="facility-type" className="block text-xs font-medium text-slate-600">
-          Type
+          Tipo
         </label>
         <select
           id="facility-type"
@@ -51,7 +51,7 @@ export function CreateFacilityForm() {
         >
           {FACILITY_TYPES.map((t) => (
             <option key={t} value={t}>
-              {t}
+              {FACILITY_TYPE_LABELS[t]}
             </option>
           ))}
         </select>
@@ -59,7 +59,7 @@ export function CreateFacilityForm() {
 
       <div>
         <label htmlFor="facility-location" className="block text-xs font-medium text-slate-600">
-          Location (optional)
+          Ubicación (opcional)
         </label>
         <input
           id="facility-location"
@@ -74,7 +74,7 @@ export function CreateFacilityForm() {
         disabled={createFacility.isPending}
         className="rounded-md bg-sky-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-50"
       >
-        {createFacility.isPending ? 'Adding…' : 'Add facility'}
+        {createFacility.isPending ? 'Agregando…' : 'Agregar instalación'}
       </button>
 
       {error && <p className="basis-full text-sm text-red-600">{error}</p>}
