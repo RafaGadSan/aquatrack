@@ -14,6 +14,8 @@ Checklist de avance por fase. Se actualiza en cada sesión (ver `CLAUDE.md` secc
 
 ## Fase 1 — MVP
 
+- [x] Modelo de dominio inicial (entidades `User`, `Facility`, `EnvironmentalReading`,
+      `ParameterThreshold`, `Alert` + lógica de cálculo de alertas `AlertEvaluator`, con 30 unit tests)
 - [ ] Autenticación JWT + roles (Admin, JefeDeTurno, Operario)
 - [ ] CRUD de instalaciones/lotes de cultivo (jaulas/tanques), con estado (activo, en cosecha, vacío)
 - [ ] Registro de parámetros ambientales (temperatura, oxígeno disuelto, salinidad, pH) por instalación

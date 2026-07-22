@@ -162,6 +162,21 @@ docker compose down
   original: Admin, JefeDeTurno, Operario). Por la convención de código en inglés de la sección de
   convenciones; la UI puede mostrar las etiquetas traducidas sin que el enum/rol en backend use
   español. **Pendiente de confirmar con Rafael** si prefiere mantener esos nombres exactos u otros.
+- **2026-07-22** — Fase 1 modela solo `Facility` (con su propio `FacilityStatus`:
+  Empty/Active/Harvesting); la entidad `Batch`/lote con trazabilidad completa (siembra→cosecha,
+  especie, eventos históricos) se deja para Fase 2. Confirmado explícitamente con Rafael para no
+  modelar de más en el MVP. `Batch` referenciará `FacilityId` cuando se añada, sin romper esta capa.
+- **2026-07-22** — `ParameterThreshold` admite `FacilityId` nulo como "umbral global por defecto"; un
+  umbral específico de instalación tiene prioridad sobre el global para el mismo parámetro
+  (resuelto en `AlertEvaluator.ResolveThreshold`). Permite que una instalación con condiciones
+  atípicas (p. ej. agua más cálida a propósito) no dispare falsas alertas.
+- **2026-07-22** — `EnvironmentalReading` solo valida corrección *estructural* (pH entre 0-14,
+  valores no negativos), no rangos "biológicamente aceptables" — eso es responsabilidad de
+  `ParameterThreshold`/`Alert`, no una invariante de la entidad. Una lectura con temperatura
+  peligrosamente alta es una medición válida que debe generar una alerta, no una excepción.
+- **2026-07-22** — Entidades de dominio con constructor privado sin parámetros (para EF Core) +
+  constructor público con invariantes, setters privados, y una clase base `Entity` con igualdad por
+  Id. Patrón DDD estándar; evita entidades anémicas y deja las reglas de negocio dentro del dominio.
 
 ## 8. Estado actual
 
@@ -203,13 +218,27 @@ docker compose down
   vía `gh repo create --source=. --remote=origin`). Los dos workflows de CI corrieron de verdad
   contra el push inicial y terminaron en verde (`Backend CI` ~41s, `Frontend CI` ~19s) — confirma
   que el pipeline no es solo teórico.
+- **Modelo de dominio de Fase 1 implementado** en `backend/src/AquaTrack.Domain/`: entidades
+  `User`, `Facility`, `EnvironmentalReading`, `ParameterThreshold`, `Alert` (+ `Common/Entity` base
+  y `Exceptions/DomainException`), enums `Role`/`FacilityType`/`FacilityStatus`/
+  `EnvironmentalParameter`/`AlertStatus`, y el servicio de dominio `Services/AlertEvaluator` que
+  calcula qué alertas disparar a partir de una lectura + los umbrales aplicables. 30 unit tests en
+  `AquaTrack.Domain.Tests` (invariantes de entidades, límites de `ParameterThreshold`, reglas de
+  `AlertEvaluator`), todos en verde tanto en local como en el `Backend CI` del push. Ver §7 para las
+  decisiones de diseño (Facility-only en Fase 1, umbrales globales vs. por instalación, validación
+  estructural vs. de negocio en `EnvironmentalReading`).
+- Todavía sin `DbContext`/persistencia, sin capa `Application` (casos de uso/DTOs) ni controllers —
+  el dominio existe pero no hay forma de guardarlo ni exponerlo todavía.
 
 **En qué se está trabajando ahora mismo:**
-- Nada en curso. Fase 0 (setup del proyecto) completa según `PROGRESS.md`, incluido el repo remoto.
+- Nada en curso. Dominio de Fase 1 listo; siguiente incremento natural es la persistencia (EF Core
+  `DbContext` + configuración de entidades + primera migración) o la capa `Application`, según se
+  decida al retomar.
 
 **Próximos pasos inmediatos:**
-1. Diseñar el modelo de dominio inicial (Fase 1 MVP): entidades `Facility`/lote, `EnvironmentalReading`,
-   `Alert`, `User`/roles — antes de escribir el primer DbContext o controller.
+1. Decidir el siguiente incremento de Fase 1: `DbContext` + mapeo EF Core + primera migración
+   (para poder persistir lo modelado), o empezar por la capa `Application` (casos de uso de
+   auth/CRUD) usando el dominio en memoria/tests primero. Plantear con Rafael antes de empezar.
 2. Confirmar la decisión pendiente de nombres de roles en inglés (`Admin`/`ShiftLead`/`Operator`) — ver §7.
 
 **Bloqueos/problemas conocidos:** ninguno.
