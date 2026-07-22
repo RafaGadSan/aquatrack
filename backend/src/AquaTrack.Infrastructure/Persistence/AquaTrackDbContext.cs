@@ -10,6 +10,7 @@ public class AquaTrackDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<Facility> Facilities => Set<Facility>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

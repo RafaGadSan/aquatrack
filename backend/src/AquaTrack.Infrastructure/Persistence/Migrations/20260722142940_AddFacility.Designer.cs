@@ -3,6 +3,7 @@ using System;
 using AquaTrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AquaTrack.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AquaTrackDbContext))]
-    partial class AquaTrackDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260722142940_AddFacility")]
+    partial class AddFacility
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

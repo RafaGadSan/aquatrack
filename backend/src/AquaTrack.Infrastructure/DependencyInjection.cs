@@ -26,6 +26,7 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IFacilityRepository, FacilityRepository>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
