@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { isAxiosError } from 'axios'
+import { getApiErrorMessage } from '../../lib/apiError'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -22,8 +22,7 @@ export function LoginPage() {
       await login({ email, password })
       navigate(redirectTo, { replace: true })
     } catch (err) {
-      const message = isAxiosError(err) ? (err.response?.data?.error ?? 'Invalid email or password.') : 'Invalid email or password.'
-      setError(message)
+      setError(getApiErrorMessage(err, 'Invalid email or password.'))
     } finally {
       setIsSubmitting(false)
     }

@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext'
 import { AuthenticatedLayout } from './layouts/AuthenticatedLayout'
 import { LoginPage } from './features/auth/LoginPage'
 import { ProtectedRoute } from './routes/ProtectedRoute'
-import { HomePage } from './routes/HomePage'
+import { FacilitiesPage } from './features/facilities/FacilitiesPage'
 
 const queryClient = new QueryClient()
 
@@ -17,7 +17,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AuthenticatedLayout />}>
-                <Route path="/" element={<HomePage />} />
+                <Route path="/" element={<FacilitiesPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

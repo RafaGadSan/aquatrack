@@ -269,6 +269,18 @@ docker compose down
   ej. `features/auth/api.ts`), no en el `src/api/` compartido del esqueleto original — coherente con
   la organización por feature ya elegida para el frontend. `src/api/` queda vacío por ahora; se
   usará si aparece lógica de verdad transversal entre features.
+- **2026-07-22** — Segunda rebanada de frontend: Facilities. Se convirtió en la ruta índice (`/`),
+  reemplazando la página de bienvenida provisional (`HomePage`, eliminada) — con una sola pantalla
+  real todavía no tenía sentido un placeholder intermedio. El control de estado por fila y el
+  formulario de alta se muestran u ocultan según `user.role` en el propio componente (no hay
+  aún un helper de permisos compartido — se extraerá cuando una tercera pantalla lo necesite,
+  evitando abstraer con un solo caso de uso).
+- **2026-07-22** — `src/lib/apiError.ts` (`getApiErrorMessage`) centraliza la extracción de mensajes
+  de error de la API, porque el backend usa **dos formas distintas** de error (ver
+  `ExceptionHandlingMiddleware`): `{ error }` para fallos de negocio (`Result.Failure`, ej. nombre de
+  instalación duplicado) y `ProblemDetails { title }` para errores de validación/dominio
+  (`FluentValidation`/`DomainException`). Reutilizado por login y por el alta de instalaciones;
+  cualquier formulario nuevo que llame a la API debería usarlo también.
 
 ## 8. Estado actual
 
@@ -299,9 +311,17 @@ es obvio a partir del código.
   los tipos TS, y que `/` y `/login` resuelven bien vía el fallback SPA de Nginx. Sin verificación
   interactiva en navegador real (sin herramienta de automatización de navegador disponible en esta
   sesión) — pendiente de un vistazo manual de Rafael antes de darlo por bueno del todo.
+- **Frontend — Facilities (segunda rebanada real, ruta índice `/`):** lista de instalaciones
+  (`features/facilities/FacilitiesPage.tsx`) contra `GET /api/facilities`, alta
+  (`CreateFacilityForm.tsx`, solo visible para Admin) contra `POST /api/facilities`, y cambio de
+  estado inline (select por fila, visible para Admin/ShiftLead) contra
+  `PUT /api/facilities/{id}/status` — con invalidación de cache de TanStack Query tras cada mutación.
+  Verificado contra el backend real (`docker compose up`): alta, listado, cambio de estado y el
+  choque de nombre duplicado (409, forma `{error}`) via `curl`, confirmando que coincide con los
+  tipos TS y con `getApiErrorMessage` (ver §7).
 - **Frontend — el resto:** scaffold Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack
-  Query + Recharts + Vitest. Facilities, environmental readings/alerts y dashboard aún no tienen
-  pantalla — el backend ya expone esos endpoints (ver más abajo), solo falta consumirlos.
+  Query + Recharts + Vitest. Environmental readings/alerts y dashboard aún no tienen pantalla — el
+  backend ya expone esos endpoints (ver más abajo), solo falta consumirlos.
 - **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
   `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). Ver §7 para las
   decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
@@ -321,9 +341,10 @@ es obvio a partir del código.
   `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
 - **Tests backend:** 68 en total (30 Domain + 23 Application + 15 Api.IntegrationTests), todos en
   verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
-- **Tests frontend:** primeros tests reales del proyecto (7, en `lib/authStorage.test.ts` y
-  `features/auth/LoginPage.test.tsx`) — round-trip de `localStorage` y el formulario de login
-  (render, error de credenciales, sesión persistida en login exitoso), con `httpClient` mockeado.
+- **Tests frontend:** 9 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
+  (login: render, error de credenciales, sesión persistida) más
+  `features/facilities/FacilitiesPage.test.tsx` (formulario de alta y control de estado visibles
+  para Admin, ocultos para Operator), con `httpClient` mockeado en todos.
 - Las tres rebanadas de backend (Auth, Facility, EnvironmentalReading) se verificaron no solo con
   `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`) hablando con
   Postgres real — incluyendo el flujo completo umbral→lectura→alerta.
@@ -331,11 +352,11 @@ es obvio a partir del código.
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Rafael revisa el login en un navegador real (esta sesión no pudo hacerlo — ver nota en la entrada
-   de Frontend Auth de más arriba).
-2. Conectar las pantallas de `facilities` (listar/crear/cambiar estado) y luego
-   `environmental-params`/`alerts`, reutilizando el patrón de esta rebanada (`features/<x>/api.ts` +
-   componentes de esa carpeta).
+1. Rafael revisa login + facilities en un navegador real (esta sesión no pudo — sin herramienta de
+   automatización de navegador disponible; todo lo demás sí se verificó contra el backend real).
+2. Conectar `environmental-params`/`alerts` (registrar lectura, ver alertas activas), reutilizando el
+   patrón de las dos rebanadas ya hechas (`features/<x>/api.ts` + componentes de esa carpeta +
+   `getApiErrorMessage` para errores).
 3. Cuando esas pantallas existan: decidir Dashboard (Fase 1) vs. saltar a Fase 2
    (turnos/personal, incidencias, alimentación, trazabilidad de lote).
 
