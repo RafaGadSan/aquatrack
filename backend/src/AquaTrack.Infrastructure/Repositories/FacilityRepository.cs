@@ -25,7 +25,4 @@ public class FacilityRepository : IFacilityRepository
 
     public async Task AddAsync(Facility facility, CancellationToken cancellationToken = default) =>
         await _context.Facilities.AddAsync(facility, cancellationToken);
-
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
-        _context.SaveChangesAsync(cancellationToken);
 }

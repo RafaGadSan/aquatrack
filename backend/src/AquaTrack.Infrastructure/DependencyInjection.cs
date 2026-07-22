@@ -25,8 +25,12 @@ public static class DependencyInjection
                 "Jwt:Secret must be at least 32 bytes (256 bits) long for HS256 signing.")
             .ValidateOnStart();
 
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IFacilityRepository, FacilityRepository>();
+        services.AddScoped<IEnvironmentalReadingRepository, EnvironmentalReadingRepository>();
+        services.AddScoped<IParameterThresholdRepository, ParameterThresholdRepository>();
+        services.AddScoped<IAlertRepository, AlertRepository>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
