@@ -75,6 +75,6 @@ describe('DashboardPage', () => {
 
     renderDashboard()
 
-    expect(await screen.findByText(/no active alerts/i)).toBeInTheDocument()
+    expect(await screen.findByText(/no hay alertas activas/i)).toBeInTheDocument()
   })
 })

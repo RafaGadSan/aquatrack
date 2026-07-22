@@ -41,7 +41,7 @@ public class Alert : Entity
     public void Resolve()
     {
         if (Status == AlertStatus.Resolved)
-            throw new DomainException("Alert is already resolved.");
+            throw new DomainException("La alerta ya está resuelta.");
 
         Status = AlertStatus.Resolved;
         ResolvedAt = DateTime.UtcNow;

@@ -20,7 +20,7 @@ public class Facility : Entity
     public Facility(string name, FacilityType type, string? location = null)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("Facility name is required.");
+            throw new DomainException("El nombre de la instalación es obligatorio.");
 
         Name = name.Trim();
         Type = type;
@@ -35,7 +35,7 @@ public class Facility : Entity
     public void Rename(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("Facility name is required.");
+            throw new DomainException("El nombre de la instalación es obligatorio.");
 
         Name = name.Trim();
         UpdatedAt = DateTime.UtcNow;

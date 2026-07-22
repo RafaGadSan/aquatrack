@@ -29,9 +29,9 @@ describe('LoginPage', () => {
   it('renders the login form', () => {
     renderLoginPage()
 
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/correo electrónico/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/contraseña/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /iniciar sesión/i })).toBeInTheDocument()
   })
 
   it('shows an error message when login fails', async () => {
@@ -42,9 +42,9 @@ describe('LoginPage', () => {
 
     renderLoginPage()
 
-    await userEvent.type(screen.getByLabelText(/email/i), 'admin@aquatrack.dev')
-    await userEvent.type(screen.getByLabelText(/password/i), 'wrong-password')
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
+    await userEvent.type(screen.getByLabelText(/correo electrónico/i), 'admin@aquatrack.dev')
+    await userEvent.type(screen.getByLabelText(/contraseña/i), 'wrong-password')
+    await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 
     expect(await screen.findByText('Invalid credentials.')).toBeInTheDocument()
   })
@@ -63,9 +63,9 @@ describe('LoginPage', () => {
 
     renderLoginPage()
 
-    await userEvent.type(screen.getByLabelText(/email/i), 'admin@aquatrack.dev')
-    await userEvent.type(screen.getByLabelText(/password/i), 'Admin123!')
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
+    await userEvent.type(screen.getByLabelText(/correo electrónico/i), 'admin@aquatrack.dev')
+    await userEvent.type(screen.getByLabelText(/contraseña/i), 'Admin123!')
+    await userEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 
     await waitFor(() => {
       expect(localStorage.getItem('aquatrack.auth')).toContain('admin@aquatrack.dev')

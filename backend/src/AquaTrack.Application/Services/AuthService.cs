@@ -23,7 +23,7 @@ public class AuthService : IAuthService
 
         if (user is null || !user.IsActive || !_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
-            return Result<AuthResponse>.Failure("Invalid email or password.");
+            return Result<AuthResponse>.Failure("Correo electrónico o contraseña inválidos.");
         }
 
         var token = _tokenGenerator.GenerateToken(user);

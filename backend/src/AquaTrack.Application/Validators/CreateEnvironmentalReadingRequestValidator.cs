@@ -7,8 +7,8 @@ public class CreateEnvironmentalReadingRequestValidator : AbstractValidator<Crea
 {
     public CreateEnvironmentalReadingRequestValidator()
     {
-        RuleFor(x => x.DissolvedOxygen).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Salinity).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.PH).InclusiveBetween(0, 14);
+        RuleFor(x => x.DissolvedOxygen).GreaterThanOrEqualTo(0).WithName("Oxígeno disuelto");
+        RuleFor(x => x.Salinity).GreaterThanOrEqualTo(0).WithName("Salinidad");
+        RuleFor(x => x.PH).InclusiveBetween(0, 14).WithName("pH");
     }
 }

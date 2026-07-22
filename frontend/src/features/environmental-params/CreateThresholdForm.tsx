@@ -29,7 +29,7 @@ export function CreateThresholdForm() {
       setMaxValue('')
       setFacilityId('')
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not create the threshold.'))
+      setError(getApiErrorMessage(err, 'No se pudo crear el umbral.'))
     }
   }
 
@@ -37,7 +37,7 @@ export function CreateThresholdForm() {
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
       <div>
         <label htmlFor="threshold-parameter" className="block text-xs font-medium text-slate-600">
-          Parameter
+          Parámetro
         </label>
         <select
           id="threshold-parameter"
@@ -55,7 +55,7 @@ export function CreateThresholdForm() {
 
       <div>
         <label htmlFor="threshold-min" className="block text-xs font-medium text-slate-600">
-          Min
+          Mín
         </label>
         <input
           id="threshold-min"
@@ -70,7 +70,7 @@ export function CreateThresholdForm() {
 
       <div>
         <label htmlFor="threshold-max" className="block text-xs font-medium text-slate-600">
-          Max
+          Máx
         </label>
         <input
           id="threshold-max"
@@ -85,7 +85,7 @@ export function CreateThresholdForm() {
 
       <div>
         <label htmlFor="threshold-facility" className="block text-xs font-medium text-slate-600">
-          Facility (optional)
+          Instalación (opcional)
         </label>
         <select
           id="threshold-facility"
@@ -93,7 +93,7 @@ export function CreateThresholdForm() {
           onChange={(e) => setFacilityId(e.target.value)}
           className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         >
-          <option value="">Global (all facilities)</option>
+          <option value="">Global (todas las instalaciones)</option>
           {facilities?.map((facility) => (
             <option key={facility.id} value={facility.id}>
               {facility.name}
@@ -107,7 +107,7 @@ export function CreateThresholdForm() {
         disabled={createThreshold.isPending}
         className="rounded-md bg-sky-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-50"
       >
-        {createThreshold.isPending ? 'Adding…' : 'Add threshold'}
+        {createThreshold.isPending ? 'Agregando…' : 'Agregar umbral'}
       </button>
 
       {error && <p className="basis-full text-sm text-red-600">{error}</p>}

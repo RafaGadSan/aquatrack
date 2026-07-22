@@ -25,7 +25,7 @@ public class ParameterThresholdService : IParameterThresholdService
     {
         if (request.FacilityId is { } facilityId && await _facilityRepository.GetByIdAsync(facilityId, cancellationToken) is null)
         {
-            return Result<ParameterThresholdResponse>.Failure("Facility not found.");
+            return Result<ParameterThresholdResponse>.Failure("Instalación no encontrada.");
         }
 
         var threshold = new ParameterThreshold(request.Parameter, request.MinValue, request.MaxValue, request.FacilityId);

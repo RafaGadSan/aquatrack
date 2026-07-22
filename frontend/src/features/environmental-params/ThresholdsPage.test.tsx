@@ -55,7 +55,7 @@ describe('ThresholdsPage', () => {
     renderThresholdsPage()
 
     expect(await screen.findByText('pH')).toBeInTheDocument()
-    expect(screen.getByLabelText(/^min$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^mín$/i)).toBeInTheDocument()
   })
 
   it('hides the create form for an Operator', async () => {

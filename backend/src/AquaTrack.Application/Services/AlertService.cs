@@ -20,7 +20,7 @@ public class AlertService : IAlertService
     {
         if (await _facilityRepository.GetByIdAsync(facilityId, cancellationToken) is null)
         {
-            return Result<IReadOnlyList<AlertResponse>>.Failure("Facility not found.");
+            return Result<IReadOnlyList<AlertResponse>>.Failure("Instalación no encontrada.");
         }
 
         var alerts = await _alertRepository.GetByFacilityIdAsync(facilityId, cancellationToken);

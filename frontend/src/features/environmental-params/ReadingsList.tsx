@@ -3,19 +3,19 @@ import { useReadings } from './api'
 export function ReadingsList({ facilityId }: { facilityId: string }) {
   const { data: readings, isLoading, isError } = useReadings(facilityId)
 
-  if (isLoading) return <p className="text-sm text-slate-500">Loading readings…</p>
-  if (isError) return <p className="text-sm text-red-600">Could not load readings.</p>
-  if (!readings || readings.length === 0) return <p className="text-sm text-slate-500">No readings recorded yet.</p>
+  if (isLoading) return <p className="text-sm text-slate-500">Cargando lecturas…</p>
+  if (isError) return <p className="text-sm text-red-600">No se pudieron cargar las lecturas.</p>
+  if (!readings || readings.length === 0) return <p className="text-sm text-slate-500">Todavía no hay lecturas registradas.</p>
 
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
       <table className="w-full text-sm">
         <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
           <tr>
-            <th className="px-4 py-2">Recorded at</th>
+            <th className="px-4 py-2">Registrada</th>
             <th className="px-4 py-2">Temp (°C)</th>
             <th className="px-4 py-2">O₂ (mg/L)</th>
-            <th className="px-4 py-2">Salinity (ppt)</th>
+            <th className="px-4 py-2">Salinidad (ppt)</th>
             <th className="px-4 py-2">pH</th>
           </tr>
         </thead>

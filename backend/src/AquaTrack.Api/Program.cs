@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using AquaTrack.Api.Middleware;
 using AquaTrack.Application;
@@ -18,9 +19,12 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
-// Keep validation messages in English regardless of the host's OS locale, so behavior doesn't
-// silently differ between a developer's machine and the (Linux, English-locale) deployed container.
-FluentValidation.ValidatorOptions.Global.LanguageManager.Enabled = false;
+// Validation messages are Spanish (the UI's language) and, critically, explicitly pinned to that
+// culture rather than left to auto-detect from the host's OS locale — auto-detect is what caused
+// messages to silently differ between a developer's machine and the deployed container before.
+// Explicit culture keeps that same determinism while getting Spanish instead of just English.
+FluentValidation.ValidatorOptions.Global.LanguageManager.Enabled = true;
+FluentValidation.ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("es");
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

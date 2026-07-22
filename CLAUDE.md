@@ -392,6 +392,66 @@ docker compose down
     mismo bug de CORS que se encontró y arregló en local.
   - JWT secret de producción generado nuevo (no reutilizado del `.env` local) — 64 bytes aleatorios,
     solo vive como variable de entorno en Render.
+- **2026-07-22** — **UI del frontend traducida al español**, a pedido explícito de Rafael. Alcance:
+  todo el texto visible (labels, botones, mensajes de carga/error, encabezados de tabla) en los
+  componentes React. **No** se tradujo el código (nombres de variables/funciones/componentes,
+  comentarios — sigue la convención de §4). En su momento los mensajes que devuelve el backend
+  (FluentValidation, `DomainException`, `Result.Failure`) quedaron sin traducir — ver la entrada
+  posterior en esta misma sección, donde Rafael pidió explícitamente cerrar ese hueco y quedó hecho.
+  - Los valores de los enums que vienen de la API (`FacilityStatus`, `FacilityType`, `Role`,
+    `AlertStatus`, `EnvironmentalParameter`) **no cambiaron** — siguen siendo `'Active'`, `'Admin'`,
+    etc., tal como los espera/devuelve el backend. Cada tipo tiene un mapa `*_LABELS` al lado de su
+    definición (`FACILITY_STATUS_LABELS`, `ROLE_LABELS`, `ALERT_STATUS_LABELS`, ampliando el patrón
+    que ya existía para `ENVIRONMENTAL_PARAMETER_LABELS`) que traduce el valor solo para mostrarlo;
+    el dato que viaja a la API nunca se toca.
+  - Verificado con navegador real (Playwright) contra el stack dockerizado completo, no solo tests —
+    en particular para confirmar que palabras en español más largas que sus equivalentes en inglés
+    (p. ej. "Instalaciones" vs. "Facilities") no rompieran el layout responsive que se arregló en la
+    sesión anterior. Sin problemas: 0 errores de consola, capturas limpias en desktop y en 390px.
+  - Los 17 tests de frontend que hacían `getByLabelText`/`getByRole(name: ...)` sobre texto en inglés
+    se actualizaron para buscar el texto en español nuevo — es la razón por la que estos tests son
+    tests de integración de UI y no solo de lógica: verifican lo que el usuario realmente ve.
+  - Capturas del README (`docs/screenshots/*.png`) regeneradas contra la UI en español para que la
+    documentación no quede desactualizada respecto a la app real.
+  - Al desplegar esta rama a Vercel apareció un problema de infraestructura no relacionado con la
+    traducción: el proyecto de Vercel tenía la integración de GitHub activa (se activó sola al
+    correr `vercel link` en la sesión de despliegue anterior) pero **sin `Root Directory`
+    configurado** — los deploys manuales por CLI funcionaban porque el comando corría parado dentro
+    de `frontend/`, pero los deploys automáticos por PR clonan el monorepo completo y sin
+    `rootDirectory: "frontend"` intentaban buildear desde la raíz, donde no hay ningún `package.json`
+    (`vite: command not found`, exit 127). Corregido seteando `rootDirectory` vía la API de Vercel
+    (`PATCH /v9/projects/aquatrack-frontend`) — queda arreglado para cualquier PR futuro, no solo
+    para este.
+- **2026-07-22** — **Mensajes del backend traducidos al español**, a pedido explícito de Rafael tras
+  la traducción del frontend (quedaban en inglés y podían aparecer mezclados con la UI en español).
+  Cubre las tres fuentes de mensajes que le llegan al cliente:
+  - **FluentValidation**: en vez de `ValidatorOptions.Global.LanguageManager.Enabled = false`
+    (forzaba inglés para no depender del locale del SO — ver entrada de sesión anterior), ahora
+    `Enabled = true` + `Culture = new CultureInfo("es")` — **explícito**, no auto-detectado, así que
+    mantiene la misma garantía de determinismo que tenía la versión anterior (no depende del locale
+    del SO) pero en español en vez de en inglés. Cada `RuleFor` que antes mostraba el nombre de la
+    propiedad en inglés (ej. `'PH' must be between 0 and 14.`) ahora tiene `.WithName("...")` en
+    español — verificado con `curl` que `.WithName()` se aplica a toda la cadena de validadores de
+    esa propiedad, no solo al último.
+  - **`DomainException`** (invariantes de las entidades) y **`Result.Failure`** (fallos de negocio
+    en los servicios de Application, ej. "instalación no encontrada", "ya existe una instalación
+    llamada X") — traducidos directamente, son literales de C#.
+  - Mensaje genérico de error 500 en `ExceptionHandlingMiddleware`.
+  - **Ningún test dependía del texto exacto de estos mensajes** (solo de `IsSuccess`/status codes),
+    así que no hubo que tocar ningún test backend — buen diseño de tests previo, no suerte.
+  - Verificado con `curl` contra el backend real para cada una de las tres fuentes (NotEmpty,
+    InclusiveBetween, GreaterThanOrEqualTo, `Result.Failure` de login inválido y de nombre
+    duplicado) y con Playwright disparando el error real de "instalación duplicada" desde el
+    formulario de verdad, confirmando que el mensaje llega intacto hasta el banner de error del
+    frontend.
+  - Al redesplegar el backend a Render para llevar esto a producción, el trigger de deploy por API
+    devolvía `500 internal server error` sin más detalle. Causa real: el servicio de Render seguía
+    apuntando a la rama `worktree-frontend-auth-slice` (la del PR #1), que se borró — local y
+    remota — al mergear ese PR (ver entrada de esa sesión). Render nunca avisó de esto en el
+    dashboard, solo fallaba al intentar un deploy nuevo. Corregido apuntando el servicio a
+    `worktree-i18n-spanish-ui` (la rama del PR #2 actual) vía `PATCH /v1/services/{id}` con
+    `{"branch": "..."}`. **Lección:** si se borra una rama que un servicio de Render/Vercel tenía
+    configurada, hay que actualizar la config del servicio a mano — no se detecta ni se avisa solo.
 
 ## 8. Estado actual
 
@@ -399,7 +459,8 @@ docker compose down
 
 **Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Fase 1 MVP está terminada por
 completo**: funcionalidad (backend + frontend), pulido (README, responsive, accesibilidad) y
-**desplegada en vivo** — https://aquatrack-frontend-iota.vercel.app — ver `PROGRESS.md`. La app se
+**desplegada en vivo** — https://aquatrack-frontend-iota.vercel.app — ver `PROGRESS.md`. La UI del
+frontend está en español (código y mensajes del backend siguen en inglés — ver §7). La app se
 verificó por primera vez esta sesión contra un **navegador real** (Playwright headless, no solo
 `curl`), tanto en local como contra las URLs públicas ya desplegadas, lo que encontró y corrigió dos
 bugs reales que ningún test anterior había detectado: **CORS no estaba configurado** (la app nunca

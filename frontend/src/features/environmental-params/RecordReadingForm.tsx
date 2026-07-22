@@ -30,18 +30,18 @@ export function RecordReadingForm({ facilityId }: { facilityId: string }) {
       setForm(initialForm)
       setTriggeredAlerts(result.triggeredAlerts)
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not record the reading.'))
+      setError(getApiErrorMessage(err, 'No se pudo registrar la lectura.'))
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-semibold text-slate-800">Record a reading</h2>
+      <h2 className="mb-3 text-sm font-semibold text-slate-800">Registrar una lectura</h2>
 
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <label htmlFor="temperature" className="block text-xs font-medium text-slate-600">
-            Temperature (°C)
+            Temperatura (°C)
           </label>
           <input
             id="temperature"
@@ -56,7 +56,7 @@ export function RecordReadingForm({ facilityId }: { facilityId: string }) {
 
         <div>
           <label htmlFor="dissolvedOxygen" className="block text-xs font-medium text-slate-600">
-            Dissolved oxygen (mg/L)
+            Oxígeno disuelto (mg/L)
           </label>
           <input
             id="dissolvedOxygen"
@@ -72,7 +72,7 @@ export function RecordReadingForm({ facilityId }: { facilityId: string }) {
 
         <div>
           <label htmlFor="salinity" className="block text-xs font-medium text-slate-600">
-            Salinity (ppt)
+            Salinidad (ppt)
           </label>
           <input
             id="salinity"
@@ -108,7 +108,7 @@ export function RecordReadingForm({ facilityId }: { facilityId: string }) {
           disabled={recordReading.isPending}
           className="rounded-md bg-sky-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-50"
         >
-          {recordReading.isPending ? 'Recording…' : 'Record'}
+          {recordReading.isPending ? 'Registrando…' : 'Registrar'}
         </button>
       </div>
 
@@ -116,11 +116,11 @@ export function RecordReadingForm({ facilityId }: { facilityId: string }) {
 
       {triggeredAlerts && triggeredAlerts.length > 0 && (
         <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-          <p className="font-medium">This reading triggered {triggeredAlerts.length} alert(s):</p>
+          <p className="font-medium">Esta lectura disparó {triggeredAlerts.length} alerta(s):</p>
           <ul className="mt-1 list-inside list-disc">
             {triggeredAlerts.map((alert) => (
               <li key={alert.id}>
-                {ENVIRONMENTAL_PARAMETER_LABELS[alert.parameter]}: {alert.value} (expected {alert.thresholdMin}–{alert.thresholdMax})
+                {ENVIRONMENTAL_PARAMETER_LABELS[alert.parameter]}: {alert.value} (esperado {alert.thresholdMin}–{alert.thresholdMax})
               </li>
             ))}
           </ul>
@@ -128,7 +128,7 @@ export function RecordReadingForm({ facilityId }: { facilityId: string }) {
       )}
 
       {triggeredAlerts && triggeredAlerts.length === 0 && (
-        <p className="mt-3 text-sm text-emerald-700">Reading recorded, within all applicable thresholds.</p>
+        <p className="mt-3 text-sm text-emerald-700">Lectura registrada, dentro de todos los umbrales aplicables.</p>
       )}
     </form>
   )
