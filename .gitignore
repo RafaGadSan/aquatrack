@@ -2,7 +2,6 @@
 bin/
 obj/
 *.user
-appsettings.Development.json
 appsettings.Local.json
 
 # --- Node / React / Vite ---
