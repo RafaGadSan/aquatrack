@@ -8,10 +8,12 @@ namespace AquaTrack.Application.Services;
 public class FacilityService : IFacilityService
 {
     private readonly IFacilityRepository _facilityRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public FacilityService(IFacilityRepository facilityRepository)
+    public FacilityService(IFacilityRepository facilityRepository, IUnitOfWork unitOfWork)
     {
         _facilityRepository = facilityRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<FacilityResponse>> CreateAsync(CreateFacilityRequest request, CancellationToken cancellationToken = default)
@@ -23,7 +25,7 @@ public class FacilityService : IFacilityService
 
         var facility = new Facility(request.Name, request.Type, request.Location);
         await _facilityRepository.AddAsync(facility, cancellationToken);
-        await _facilityRepository.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<FacilityResponse>.Success(ToResponse(facility));
     }
@@ -51,7 +53,7 @@ public class FacilityService : IFacilityService
         }
 
         facility.ChangeStatus(request.Status);
-        await _facilityRepository.SaveChangesAsync(cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<FacilityResponse>.Success(ToResponse(facility));
     }

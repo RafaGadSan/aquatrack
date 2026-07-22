@@ -10,6 +10,9 @@ public static class DependencyInjection
     {
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IFacilityService, FacilityService>();
+        services.AddScoped<IEnvironmentalReadingService, EnvironmentalReadingService>();
+        services.AddScoped<IParameterThresholdService, ParameterThresholdService>();
+        services.AddScoped<IAlertService, AlertService>();
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;

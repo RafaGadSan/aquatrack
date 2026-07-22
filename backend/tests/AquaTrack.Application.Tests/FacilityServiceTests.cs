@@ -11,11 +11,12 @@ namespace AquaTrack.Application.Tests;
 public class FacilityServiceTests
 {
     private readonly Mock<IFacilityRepository> _repository = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly FacilityService _sut;
 
     public FacilityServiceTests()
     {
-        _sut = new FacilityService(_repository.Object);
+        _sut = new FacilityService(_repository.Object, _unitOfWork.Object);
     }
 
     [Fact]
@@ -30,7 +31,7 @@ public class FacilityServiceTests
         Assert.Equal(request.Name, result.Value!.Name);
         Assert.Equal(FacilityStatus.Empty, result.Value.Status);
         _repository.Verify(r => r.AddAsync(It.IsAny<Facility>(), It.IsAny<CancellationToken>()), Times.Once);
-        _repository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -75,7 +76,7 @@ public class FacilityServiceTests
         var result = await _sut.UpdateStatusAsync(Guid.NewGuid(), new UpdateFacilityStatusRequest(FacilityStatus.Active));
 
         Assert.False(result.IsSuccess);
-        _repository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -89,6 +90,6 @@ public class FacilityServiceTests
         Assert.True(result.IsSuccess);
         Assert.Equal(FacilityStatus.Active, result.Value!.Status);
         Assert.Equal(FacilityStatus.Active, facility.Status);
-        _repository.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

@@ -11,6 +11,4 @@ public interface IFacilityRepository
     Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken = default);
 
     Task AddAsync(Facility facility, CancellationToken cancellationToken = default);
-
-    Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }
