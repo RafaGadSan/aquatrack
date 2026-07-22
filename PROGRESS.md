@@ -7,8 +7,8 @@ Checklist de avance por fase. Se actualiza en cada sesión (ver `CLAUDE.md` secc
 - [x] Inicializar repositorio git (monorepo)
 - [x] Crear `CLAUDE.md` y `PROGRESS.md`
 - [x] Definir estructura de carpetas frontend/backend
-- [ ] Scaffold del proyecto .NET (solution + proyectos por capa + proyectos de test)
-- [ ] Scaffold del proyecto Vite + React + TS + Tailwind
+- [x] Scaffold del proyecto .NET (solution + proyectos por capa + proyectos de test)
+- [x] Scaffold del proyecto Vite + React + TS + Tailwind
 - [ ] `docker-compose.yml` con Postgres para desarrollo local
 - [ ] Pipeline base de GitHub Actions (lint + build, sin despliegue todavía)
 

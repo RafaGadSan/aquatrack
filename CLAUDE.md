@@ -90,24 +90,38 @@ esqueleto de carpetas con `.gitkeep`. Eso es el próximo paso.
 
 ## 5. Comandos útiles
 
-_(Se completará según se vaya scaffoldeando cada parte — todavía no hay proyectos .NET ni npm inicializados)._
-
 ```
-# Backend (pendiente de scaffold)
+# Backend (backend/AquaTrack.sln — .NET 8 SDK, verificado con SDK 8.0.400)
 cd backend && dotnet build
 cd backend && dotnet test
-cd backend/src/AquaTrack.Api && dotnet ef migrations add <Name>
-cd backend/src/AquaTrack.Api && dotnet ef database update
+cd backend && dotnet run --project src/AquaTrack.Api
+# Migraciones EF Core (pendiente: aún no hay DbContext, se añade en Fase 1)
+cd backend && dotnet ef migrations add <Name> --project src/AquaTrack.Infrastructure --startup-project src/AquaTrack.Api
+cd backend && dotnet ef database update --project src/AquaTrack.Infrastructure --startup-project src/AquaTrack.Api
 
-# Frontend (pendiente de scaffold)
+# Frontend (frontend/ — Vite 8 + React 19 + TS, Node v22.17.0 / npm 10.9.2)
 cd frontend && npm install
 cd frontend && npm run dev
-cd frontend && npm run test
-cd frontend && npm run lint
+cd frontend && npm run build       # tsc -b && vite build
+cd frontend && npm run test        # vitest (watch mode); usar `npx vitest run` para un solo pase
+cd frontend && npm run lint        # oxlint
 
-# Todo el stack (pendiente de docker-compose.yml)
+# Todo el stack (pendiente: docker-compose.yml con Postgres)
 docker-compose up
 ```
+
+**Notas de versiones (importante para futuras sesiones):**
+- El SDK de .NET instalado es 8.0.400, pero `dotnet add package` sin `--version` resuelve a la
+  última versión de NuGet (probado: EF Core resolvió a 10.0.10, que exige `net10.0` y rompe la
+  build). **Al añadir paquetes de Microsoft.EntityFrameworkCore.\* o de ASP.NET Core hay que fijar
+  la versión explícitamente a la línea 8.0.x** (ej. `--version 8.0.11`) para que coincida con el
+  `TargetFramework net8.0` de los proyectos.
+- El frontend quedó con **Tailwind CSS v4** (no v3): no hay `tailwind.config.js` ni `postcss.config.js`
+  — la v4 usa el plugin `@tailwindcss/vite` y `@import "tailwindcss";` en `index.css`. Si se necesita
+  personalizar el tema, se hace con `@theme` dentro del CSS, no en un config JS.
+- El template de Vite actual usa **oxlint** en vez de ESLint (`npm run lint` → `oxlint`).
+- `vite.config.ts` importa `defineConfig` desde `vitest/config` (no desde `vite`) para poder incluir
+  el bloque `test: {...}` con tipado correcto.
 
 ## 6. Cómo trabajamos
 
@@ -141,21 +155,37 @@ docker-compose up
 **Última sesión:** 2026-07-22
 
 **Hecho:**
-- Repositorio git inicializado en `aquatrack/` (rama `main`).
+- Repositorio git inicializado en `aquatrack/` (rama `main`), 2 commits.
 - `.gitignore` creado (.NET + Node + Docker + env files).
-- Esqueleto de carpetas creado para backend (Clean Architecture: Domain/Application/Infrastructure/Api
-  + tests) y frontend (estructura por feature).
-- `CLAUDE.md` y `PROGRESS.md` creados.
+- Esqueleto de carpetas para backend (Clean Architecture) y frontend (por feature).
+- `CLAUDE.md`, `PROGRESS.md`, `README.md` creados.
+- **Backend scaffoldeado y compilando:** `backend/AquaTrack.sln` con
+  `AquaTrack.Domain`/`AquaTrack.Application`/`AquaTrack.Infrastructure`/`AquaTrack.Api` (webapi con
+  controllers) + 3 proyectos de test xUnit, todos referenciados en la solución y con las referencias
+  de proyecto correctas (Application→Domain, Infrastructure→Application, Api→Application+Infrastructure).
+  Paquetes base instalados: EF Core 8.0.11 + Npgsql provider + Design (Infrastructure),
+  FluentValidation 11.9.2 (Application), JWT Bearer 8.0.11 (Api), Moq (tests unitarios),
+  Mvc.Testing (integration tests). Boilerplate de plantilla (WeatherForecast, Class1, UnitTest1)
+  eliminado. `dotnet build` verificado sin errores/warnings.
+- **Frontend scaffoldeado y compilando:** Vite 8 + React 19 + TypeScript, fusionado dentro de la
+  estructura por feature ya existente. Tailwind CSS v4 vía `@tailwindcss/vite`, React Router,
+  TanStack Query, Recharts, Axios instalados. Vitest + React Testing Library + jsdom configurados
+  (`vite.config.ts` con bloque `test`). `npm run build` y `npm run lint` verificados sin errores.
+  `App.tsx`/`index.css` limpiados del contenido de demo de Vite.
+- Ningún DbContext, entidad de dominio, controller ni componente de negocio todavía — solo
+  estructura y dependencias base (según lo pactado: "antes de escribir la primera línea de lógica
+  de negocio").
 
 **En qué se está trabajando ahora mismo:**
-- Nada en curso — a la espera de decidir el siguiente paso (scaffolding real del backend .NET y del
-  frontend Vite).
+- Nada en curso. Quedan pendientes de Fase 0: `docker-compose.yml` con Postgres y el pipeline base
+  de GitHub Actions (lint+build). No se han abordado todavía porque el turno se centró en el
+  scaffolding de backend/frontend.
 
 **Próximos pasos inmediatos:**
-1. Scaffoldear el proyecto .NET (solution + 4 proyectos por capa + proyectos de test) dentro de `backend/`.
-2. Scaffoldear el proyecto Vite + React + TS + Tailwind dentro de `frontend/`.
-3. Diseñar el modelo de dominio inicial (entidades: Facility/Lote, EnvironmentalReading, Alert, User/Role) antes de escribir código de negocio — Fase 1 del MVP.
-4. Configurar docker-compose con Postgres para desarrollo local.
-5. Primer commit de scaffolding con Conventional Commits (`chore: scaffold backend and frontend projects`).
+1. Decidir y confirmar con Rafael si seguimos con `docker-compose.yml` (Postgres) + GitHub Actions
+   ahora, o si pasamos directamente a diseñar el modelo de dominio de Fase 1 (Facility/Lote,
+   EnvironmentalReading, Alert, User/Role) y dejamos Docker/CI para después.
+2. Confirmar la decisión pendiente de nombres de roles en inglés (`Admin`/`ShiftLead`/`Operator`) — ver §7.
+3. Diseñar el modelo de dominio inicial antes de escribir el primer DbContext o controller — Fase 1 del MVP.
 
 **Bloqueos/problemas conocidos:** ninguno.
