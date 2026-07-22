@@ -415,6 +415,15 @@ docker compose down
     tests de integración de UI y no solo de lógica: verifican lo que el usuario realmente ve.
   - Capturas del README (`docs/screenshots/*.png`) regeneradas contra la UI en español para que la
     documentación no quede desactualizada respecto a la app real.
+  - Al desplegar esta rama a Vercel apareció un problema de infraestructura no relacionado con la
+    traducción: el proyecto de Vercel tenía la integración de GitHub activa (se activó sola al
+    correr `vercel link` en la sesión de despliegue anterior) pero **sin `Root Directory`
+    configurado** — los deploys manuales por CLI funcionaban porque el comando corría parado dentro
+    de `frontend/`, pero los deploys automáticos por PR clonan el monorepo completo y sin
+    `rootDirectory: "frontend"` intentaban buildear desde la raíz, donde no hay ningún `package.json`
+    (`vite: command not found`, exit 127). Corregido seteando `rootDirectory` vía la API de Vercel
+    (`PATCH /v9/projects/aquatrack-frontend`) — queda arreglado para cualquier PR futuro, no solo
+    para este.
 
 ## 8. Estado actual
 
