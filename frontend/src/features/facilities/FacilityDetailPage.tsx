@@ -23,7 +23,15 @@ export function FacilityDetailPage() {
         </p>
       </div>
 
-      <RecordReadingForm facilityId={facility.id} />
+      {/* Keyed on facility.id: without it, navigating between two facility detail pages (e.g. by
+          editing the URL) wouldn't remount this component, leaving the previous facility's
+          triggered-alerts banner and in-progress form values visible on the new one. */}
+      {/* Keyed on facility.id: without it, navigating between two facility detail pages (e.g. by
+          clicking through to a facility already cached by TanStack Query, which skips the
+          isLoading branch above and so doesn't naturally unmount this subtree) leaves the
+          previous facility's triggered-alerts banner and in-progress form values visible on the
+          new one. */}
+      <RecordReadingForm key={facility.id} facilityId={facility.id} />
 
       <div className="grid gap-6 md:grid-cols-2">
         <div>

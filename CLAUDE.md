@@ -297,6 +297,16 @@ docker compose down
   (`/thresholds`) con alta restringida a Admin (igual que el patrón de Facilities) pero lectura
   abierta a cualquier rol. Con más de una pantalla ya tiene sentido una navegación real en
   `AuthenticatedLayout` (antes solo tenía el header); se añadió con `NavLink`.
+- **2026-07-22** — Bug real encontrado en autorevisión de PR (antes de mergear): `RecordReadingForm`
+  necesita `key={facility.id}` en `FacilityDetailPage.tsx`. Sin esa key, React Router **no** desmonta
+  el componente al navegar entre dos instalaciones que matchean la misma ruta (`/facilities/:id`) —
+  el banner de alertas disparadas y los valores del formulario de la instalación anterior quedaban
+  visibles en la nueva. El bug solo se manifiesta cuando la instalación destino ya está en cache de
+  TanStack Query (revisitada): si es la primera visita, el propio `isLoading` de `useFacility`
+  desmonta el árbol igual, enmascarando el problema — por eso el test de regresión
+  (`FacilityDetailPage.test.tsx`) visita ambas instalaciones primero para calentar la cache antes de
+  reproducir el caso real. Cualquier página de detalle futura con estado local propio (no derivado de
+  TanStack Query) debería tener el mismo cuidado con `key`.
 
 ## 8. Estado actual
 
@@ -365,11 +375,13 @@ repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a p
   `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
 - **Tests backend:** 68 en total (30 Domain + 23 Application + 15 Api.IntegrationTests), todos en
   verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
-- **Tests frontend:** 13 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
-  (login), `features/facilities/FacilitiesPage.test.tsx` (permisos por rol), y
+- **Tests frontend:** 14 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
+  (login), `features/facilities/FacilitiesPage.test.tsx` (permisos por rol),
   `features/environmental-params/RecordReadingForm.test.tsx` +
   `features/environmental-params/ThresholdsPage.test.tsx` (alertas disparadas en la respuesta,
-  permisos por rol), con `httpClient` mockeado en todos.
+  permisos por rol), y `features/facilities/FacilityDetailPage.test.tsx` (regresión: el banner de
+  alertas no debe persistir al navegar a otra instalación ya cacheada — ver §7), con `httpClient`
+  mockeado en todos.
 - Las tres rebanadas de backend (Auth, Facility, EnvironmentalReading) se verificaron no solo con
   `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`) hablando con
   Postgres real — incluyendo el flujo completo umbral→lectura→alerta. Lo mismo del lado frontend,
