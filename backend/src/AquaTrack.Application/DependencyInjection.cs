@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<IEnvironmentalReadingService, EnvironmentalReadingService>();
         services.AddScoped<IParameterThresholdService, ParameterThresholdService>();
         services.AddScoped<IAlertService, AlertService>();
+        services.AddScoped<IDashboardService, DashboardService>();
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;

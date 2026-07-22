@@ -256,15 +256,155 @@ docker compose down
 - **2026-07-22** — Columnas `decimal` con precisión explícita en Postgres: `numeric(6,2)` para
   medidas (temperatura, oxígeno, salinidad, valores de alerta/umbral), `numeric(4,2)` para pH — para
   no depender del mapeo por defecto de Npgsql.
+- **2026-07-22** — Primera rebanada de frontend: Auth (login). Sesión de usuario en React Context
+  (`AuthContext`, `src/context/`) respaldada por `localStorage` bajo la clave `aquatrack.auth`
+  (persiste el `AuthResponse` completo — token, expiración, datos del usuario), no una librería de
+  estado global — coherente con el backend, que ya simplificó deliberadamente sin refresh tokens
+  (ver entrada anterior sobre JWT de 8h). Un cliente axios único (`src/lib/httpClient.ts`) adjunta el
+  Bearer token vía interceptor de request; un interceptor de response detecta 401 y hace un
+  `window.location.href = '/login'` (redirect duro, no via React Router) para no acoplar el cliente
+  HTTP a la instancia del router. `ProtectedRoute` (`src/routes/`) redirige a `/login` conservando la
+  ruta de origen en `location.state.from` para volver ahí tras iniciar sesión.
+- **2026-07-22** — Las llamadas a la API viven junto a cada feature (`src/features/<nombre>/api.ts`,
+  ej. `features/auth/api.ts`), no en el `src/api/` compartido del esqueleto original — coherente con
+  la organización por feature ya elegida para el frontend. `src/api/` queda vacío por ahora; se
+  usará si aparece lógica de verdad transversal entre features.
+- **2026-07-22** — Segunda rebanada de frontend: Facilities. Se convirtió en la ruta índice (`/`),
+  reemplazando la página de bienvenida provisional (`HomePage`, eliminada) — con una sola pantalla
+  real todavía no tenía sentido un placeholder intermedio. El control de estado por fila y el
+  formulario de alta se muestran u ocultan según `user.role` en el propio componente (no hay
+  aún un helper de permisos compartido — se extraerá cuando una tercera pantalla lo necesite,
+  evitando abstraer con un solo caso de uso).
+- **2026-07-22** — `src/lib/apiError.ts` (`getApiErrorMessage`) centraliza la extracción de mensajes
+  de error de la API, porque el backend usa **dos formas distintas** de error (ver
+  `ExceptionHandlingMiddleware`): `{ error }` para fallos de negocio (`Result.Failure`, ej. nombre de
+  instalación duplicado) y `ProblemDetails { title }` para errores de validación/dominio
+  (`FluentValidation`/`DomainException`). Reutilizado por login y por el alta de instalaciones;
+  cualquier formulario nuevo que llame a la API debería usarlo también.
+- **2026-07-22** — Gotcha real encontrado al verificar contra el backend real (no hipotético): la
+  propiedad C# `PH` de `EnvironmentalReadingResponse` se serializa como `"ph"` (todo minúsculas), no
+  `"pH"` — la política camelCase por defecto de `System.Text.Json` colapsa una sigla de dos letras a
+  una sola minúscula inicial. Los tipos TS (`types/environmentalReading.ts`) y el formulario de
+  registro de lecturas usan `ph`, no `pH`, como nombre de propiedad (la etiqueta visible en la UI sí
+  sigue diciendo "pH"). Si se añade otro campo con sigla en el dominio, verificar la forma real del
+  JSON con `curl` antes de asumir el casing — no fiarse de la intuición aquí.
+- **2026-07-22** — Tercera rebanada de frontend: Environmental readings, alerts y thresholds. Página
+  de detalle de instalación (`/facilities/:id`, `features/facilities/FacilityDetailPage.tsx`) que
+  compone formulario de registro de lectura (`features/environmental-params/`), lista de lecturas
+  recientes y lista de alertas de esa instalación (`features/alerts/`). Las alertas disparadas por
+  una lectura se muestran **inline** justo tras el registro (vienen ya en la respuesta del POST, ver
+  decisión de backend sobre `RecordReadingResult`), sin esperar a un refetch. Pantalla de umbrales
+  (`/thresholds`) con alta restringida a Admin (igual que el patrón de Facilities) pero lectura
+  abierta a cualquier rol. Con más de una pantalla ya tiene sentido una navegación real en
+  `AuthenticatedLayout` (antes solo tenía el header); se añadió con `NavLink`.
+- **2026-07-22** — Bug real encontrado en autorevisión de PR (antes de mergear): `RecordReadingForm`
+  necesita `key={facility.id}` en `FacilityDetailPage.tsx`. Sin esa key, React Router **no** desmonta
+  el componente al navegar entre dos instalaciones que matchean la misma ruta (`/facilities/:id`) —
+  el banner de alertas disparadas y los valores del formulario de la instalación anterior quedaban
+  visibles en la nueva. El bug solo se manifiesta cuando la instalación destino ya está en cache de
+  TanStack Query (revisitada): si es la primera visita, el propio `isLoading` de `useFacility`
+  desmonta el árbol igual, enmascarando el problema — por eso el test de regresión
+  (`FacilityDetailPage.test.tsx`) visita ambas instalaciones primero para calentar la cache antes de
+  reproducir el caso real. Cualquier página de detalle futura con estado local propio (no derivado de
+  TanStack Query) debería tener el mismo cuidado con `key`.
+- **2026-07-22** — Segundo hallazgo de la misma autorevisión: las keys de TanStack Query de
+  `readings` y `alerts` estaban anidadas bajo `['facilities', facilityId, ...]` para agruparlas
+  visualmente, pero `invalidateQueries` matchea por **prefijo** por defecto — invalidar
+  `['facilities']` (al crear o cambiar el estado de una instalación) invalidaba también las lecturas
+  y alertas de **cualquier** instalación montada. Se movieron a namespaces propios (`['readings',
+  facilityId]`, `['alerts', facilityId]`), separados del prefijo `'facilities'`; `useFacility(id)`
+  se queda intencionalmente bajo ese prefijo porque sí debe refrescarse cuando cambia el estado de
+  la instalación. Verificado con un test que falla con la key vieja y pasa con la nueva
+  (`queryKeyIsolation.test.tsx`) — no alcanza con "se ve razonable", los invariantes de invalidación
+  de cache hay que probarlos.
+- **2026-07-22** — Dashboard (cierra el checklist funcional de Fase 1). Backend:
+  `GET /api/dashboard/summary` (`DashboardController`/`DashboardService`), cualquier rol autenticado
+  — devuelve conteo de instalaciones por estado y las alertas activas de **todas** las instalaciones
+  con el nombre de la instalación ya resuelto (`DashboardAlertResponse.FacilityName`), para que el
+  frontend no tenga que hacer N llamadas extra. Requirió un método nuevo,
+  `IAlertRepository.GetActiveAsync()` (antes solo existía `GetByFacilityIdAsync`, que filtra por una
+  instalación). Frontend: el Dashboard pasa a ser la ruta índice (`/`) — más natural como pantalla de
+  aterrizaje que la lista de instalaciones — y `Facilities` se mueve a `/facilities` explícito; se
+  agregó navegación real (`AuthenticatedLayout`) para las tres secciones. Estadísticas como stat
+  tiles simples (sin gráficos: son 3-4 categorías en una foto del momento, no series temporales —
+  ver skill `dataviz`, "a veces la respuesta no es un gráfico"); reutiliza los colores de estado que
+  ya usaba `FacilitiesPage`/`AlertsList`, sin introducir una paleta nueva. Verificado extremo a
+  extremo con `docker compose` + `curl` (umbral→lectura→alerta→dashboard) antes de tocar el frontend,
+  seguido del mismo patrón de esta sesión.
+- **2026-07-22** — Bug real y serio, encontrado durante el pulido de Fase 1: **el backend no tenía
+  CORS configurado**. `curl` y los tests de integración (`HttpClient` de xUnit) nunca lo iban a
+  detectar porque ninguno de los dos aplica la política de mismo origen de un navegador real —
+  solo apareció al automatizar un navegador headless de verdad (Playwright, instalado sobre la
+  marcha en esta sesión porque `chromium-cli` no estaba disponible en este entorno Windows) para
+  sacar capturas para el README: el login fallaba con `net::ERR_FAILED` en vez de devolver un error
+  de credenciales. Es decir, **la app nunca había funcionado en un navegador real** desde que existe
+  frontend, pese a que cada rebanada se había dado por verificada. Arreglado con
+  `builder.Services.AddCors(...)` + `app.UseCors("Frontend")` en `Program.cs`, origen configurable
+  vía `Cors:AllowedOrigin` (`CORS_ALLOWED_ORIGIN` en `.env`/`docker-compose.yml`, default
+  `http://localhost:5173`, coincide con el puerto de Vite/Nginx en ambos casos). Test de regresión
+  en `CorsTests.cs` (falla sin `UseCors`, pasa con él). **Lección para el futuro:** `curl`/tests de
+  integración verifican que el backend responde correctamente: no verifican que un navegador real
+  pueda *llegar* a esa respuesta. Cualquier duda sobre "¿esto funciona en la app de verdad?" necesita
+  un navegador de verdad, no solo la API por su cuenta.
+- **2026-07-22** — El mismo navegador headless permitió, por primera vez en el proyecto, verificar
+  responsive y accesibilidad contra la app real en vez de solo leer el código:
+  - **Responsive:** una captura a 390px de ancho mostró el header (`AuthenticatedLayout`)
+    desbordándose horizontalmente — nombre de usuario y botón de cerrar sesión cortados. Corregido
+    con un layout que apila en columna en mobile y pasa a fila en `sm:`; tablas (`FacilitiesPage`,
+    `ReadingsList`, `ThresholdsPage`) envueltas en `overflow-x-auto` para que el contenido ancho
+    haga scroll dentro de su propio contenedor en vez de romper el layout de la página.
+  - **Accesibilidad:** auditoría con `axe-core` (inyectado en el navegador headless) contra las 5
+    pantallas principales encontró 3 problemas reales: contraste insuficiente en `bg-sky-600`/
+    `text-sky-600` (oscurecido a `sky-700`/`sky-800` en botones y links, ver contraste WCAG AA),
+    `LoginPage` sin landmark `<main>` (todo su contenido quedaba fuera de cualquier región para
+    lectores de pantalla), y el `<select>` de cambio de estado por fila en `FacilitiesPage` sin
+    nombre accesible (`aria-label="Status for {name}"` — antes un lector de pantalla solo anunciaba
+    "combobox" sin decir de qué instalación). 0 violaciones tras corregir los tres.
+  - Ninguno de estos dos problemas era visible leyendo el código o los tests — ambos necesitaban una
+    verificación *renderizada* (visual para responsive, con `axe-core` para accesibilidad) contra la
+    app real corriendo.
+- **2026-07-22** — **Despliegue inicial en vivo**: frontend en Vercel
+  (https://aquatrack-frontend-iota.vercel.app), backend en Render, base de datos en Neon Postgres —
+  el stack exacto que ya estaba decidido en §2. Rafael proveyó las cuentas/credenciales (token de
+  Vercel, connection string de Neon, API key de Render) directamente en el chat de esta sesión; no
+  se guardaron en ningún archivo del repo ni se commitearon — solo se usaron como variables de
+  entorno puntuales en los comandos de deploy, y las de Render/Vercel quedaron guardadas del lado de
+  esas plataformas (no en este repo).
+  - **Credenciales demo públicas, a propósito**: `admin@aquatrack.dev`/`Admin123!` (y las otras dos)
+    están en el código fuente (`DbInitializer.cs`) y ahora también en el README — decisión consciente
+    de Rafael para que cualquiera que revise el portfolio pueda loguearse sin pedir acceso. Implica
+    que cualquier visitante puede actuar como Admin sobre la base de datos pública (crear/editar
+    instalaciones, umbrales, etc.) — aceptable porque son datos ficticios, sin PII ni información de
+    negocio real. Sembrada con el mismo set de datos demo usado para las capturas del README (3
+    instalaciones, 2 umbrales globales, una alerta activa) para que la demo no se vea vacía al entrar.
+  - **Bug real encontrado al verificar el deploy con un navegador real**: Nginx (usado en
+    `docker compose`) ya tenía fallback SPA (`try_files ... /index.html`) para que las rutas de React
+    Router funcionaran; **Vercel no lo tiene por defecto** — sin `frontend/vercel.json`
+    (`rewrites: [{source: "/(.*)", destination: "/index.html"}]`), cualquier ruta que no fuera `/`
+    devolvía 404 real en producción. Encontrado con el mismo navegador headless (Playwright) usado
+    para el resto del pulido de esta sesión, apuntado a la URL pública en vez de a Docker local —
+    otra vez: `curl` a la raíz (`/`) daba 200 y no lo hubiera detectado.
+  - Orden de deploy real: 1) backend a Render con el connection string de Neon (las migraciones y el
+    seed corren solos al arrancar, mismo mecanismo que en Docker — ver entrada de Program.cs en esta
+    sección) — 2) frontend a Vercel con `VITE_API_URL` apuntando a la URL de Render — 3) volver a
+    Render para setear `Cors__AllowedOrigin` con la URL final de Vercel (no se puede saber antes de
+    que Vercel asigne el dominio) y redeployar. Sin este último paso, el deploy en vivo tendría el
+    mismo bug de CORS que se encontró y arregló en local.
+  - JWT secret de producción generado nuevo (no reutilizado del `.env` local) — 64 bytes aleatorios,
+    solo vive como variable de entorno en Render.
 
 ## 8. Estado actual
 
 **Última sesión:** 2026-07-22
 
-**Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Todo el checklist funcional de
-Fase 1 MVP del backend está hecho**: dominio, Auth (login), CRUD de `Facility`, registro de
-parámetros ambientales y alertas automáticas. Queda el dashboard (backend + frontend) y, en general,
-que el frontend consuma cualquiera de estos endpoints (sigue 100% desconectado). El detalle línea a
+**Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Fase 1 MVP está terminada por
+completo**: funcionalidad (backend + frontend), pulido (README, responsive, accesibilidad) y
+**desplegada en vivo** — https://aquatrack-frontend-iota.vercel.app — ver `PROGRESS.md`. La app se
+verificó por primera vez esta sesión contra un **navegador real** (Playwright headless, no solo
+`curl`), tanto en local como contra las URLs públicas ya desplegadas, lo que encontró y corrigió dos
+bugs reales que ningún test anterior había detectado: **CORS no estaba configurado** (la app nunca
+había funcionado en un navegador real desde que existe frontend) y **Vercel no tenía fallback SPA**
+(cualquier ruta que no fuera `/` daba 404 en producción) — ver §7 para ambos. El detalle línea a
 línea de qué se tocó en cada sesión vive en el historial de git (`git log --oneline`), no hace falta
 repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a partir del código.
 
@@ -273,8 +413,50 @@ repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a p
   Docker Compose (postgres + backend + frontend) y dos workflows de GitHub Actions
   (`backend-ci.yml`, `frontend-ci.yml`) — ambos verificados en verde contra pushes reales, no solo
   localmente.
-- **Frontend:** scaffold Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack Query +
-  Recharts + Vitest, sin features de negocio todavía — no consume ningún endpoint del backend aún.
+- **Frontend — Auth (primera rebanada real):** login (`features/auth/LoginPage.tsx`) contra
+  `POST /api/auth/login`, sesión en `AuthContext` respaldada por `localStorage`, cliente axios
+  compartido con interceptors de token/401 (`lib/httpClient.ts`), rutas protegidas
+  (`routes/ProtectedRoute.tsx`) y layout autenticado con botón de cierre de sesión
+  (`layouts/AuthenticatedLayout.tsx`). Ver §7 para las decisiones (por qué Context+localStorage y no
+  una librería de estado global, por qué el redirect en 401 es duro y no vía router). Verificado
+  contra el backend real: build de producción (`docker compose up`) + `curl` al login confirmando que
+  la forma de la respuesta (`token`, `expiresAt`, `userId`, `email`, `fullName`, `role`) coincide con
+  los tipos TS, y que `/` y `/login` resuelven bien vía el fallback SPA de Nginx. Verificado más
+  tarde en esta misma sesión contra un navegador real (Playwright headless) durante el pulido de
+  Fase 1 — ver la entrada del bug de CORS en §7, que hasta ese momento rompía el login para
+  cualquier navegador real pese a que esta verificación por `curl` ya daba todo por bueno.
+- **Frontend — Facilities (segunda rebanada real, ruta índice `/`):** lista de instalaciones
+  (`features/facilities/FacilitiesPage.tsx`) contra `GET /api/facilities`, alta
+  (`CreateFacilityForm.tsx`, solo visible para Admin) contra `POST /api/facilities`, y cambio de
+  estado inline (select por fila, visible para Admin/ShiftLead) contra
+  `PUT /api/facilities/{id}/status` — con invalidación de cache de TanStack Query tras cada mutación.
+  Verificado contra el backend real (`docker compose up`): alta, listado, cambio de estado y el
+  choque de nombre duplicado (409, forma `{error}`) via `curl`, confirmando que coincide con los
+  tipos TS y con `getApiErrorMessage` (ver §7).
+- **Frontend — Environmental readings/alerts/thresholds (tercera rebanada real):** página de detalle
+  de instalación (`features/facilities/FacilityDetailPage.tsx`, ruta `/facilities/:id`) con
+  formulario de registro de lectura, lista de lecturas recientes y lista de alertas de esa
+  instalación; pantalla de umbrales (`features/environmental-params/ThresholdsPage.tsx`, ruta
+  `/thresholds`) con alta restringida a Admin. Verificado contra el backend real (`docker compose
+  up`): flujo completo umbral→lectura→alerta vía `curl`, incluyendo el caso que dispara la alerta.
+  Esta verificación encontró y corrigió un bug real antes de mergear — ver la entrada sobre `ph` en
+  minúsculas en §7. Verificado contra navegador real en el pulido de Fase 1 (ver CORS en §7).
+- **Frontend — Dashboard (cuarta rebanada real, nueva ruta índice `/`):** stat tiles (instalaciones
+  por estado, total, alertas activas) y lista de alertas activas de todas las instalaciones con link
+  a cada una (`features/dashboard/DashboardPage.tsx`) contra `GET /api/dashboard/summary`. `Facilities`
+  se movió a `/facilities` explícito; navegación real en `AuthenticatedLayout` (Dashboard/Facilities/
+  Thresholds). Ver §7 para la decisión de stat tiles en vez de gráficos. Con esto el frontend
+  funcionalmente ya no tiene nada pendiente de Fase 1 por conectar.
+- **Backend — Dashboard:** `GET /api/dashboard/summary` (cualquier rol autenticado) — ver §7.
+- **Pulido de Fase 1 (README, CORS, responsive, accesibilidad):** primera verificación de la app
+  completa contra un navegador real (Playwright headless, instalado sobre la marcha — ver §7),
+  usada para tres cosas: (1) capturas reales para `README.md` (`docs/screenshots/`, no maquetas),
+  (2) encontrar y corregir el bug de CORS que rompía el login en cualquier navegador real desde el
+  principio del frontend, (3) encontrar y corregir un desborde real de header en mobile y 3
+  violaciones de accesibilidad reales vía `axe-core` (contraste, landmark `<main>` faltante,
+  `<select>` sin nombre accesible) — 0 violaciones tras corregir. `README.md` reescrito completo
+  (problema, capturas, stack, diagrama Mermaid de arquitectura, decisiones técnicas curadas,
+  roadmap). Ver §7 para el detalle de cada hallazgo.
 - **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
   `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). Ver §7 para las
   decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
@@ -292,21 +474,38 @@ repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a p
   hace en la operación real); solo Admin configura umbrales.
 - **Persistencia:** `AquaTrackDbContext` mapea las 5 entidades de dominio (3 migraciones:
   `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
-- **Tests backend:** 68 en total (30 Domain + 23 Application + 15 Api.IntegrationTests), todos en
-  verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
-- Las tres rebanadas (Auth, Facility, EnvironmentalReading) se verificaron no solo con
-  `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`) hablando con
-  Postgres real — incluyendo el flujo completo umbral→lectura→alerta.
+- **Tests backend:** 75 en total (30 Domain + 26 Application + 19 Api.IntegrationTests — incluye
+  `CorsTests.cs`), todos en verde en local y en el `Backend CI` de GitHub tras cada push de esta
+  sesión.
+- **Tests frontend:** 17 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
+  (login), `features/facilities/FacilitiesPage.test.tsx` (permisos por rol),
+  `features/environmental-params/RecordReadingForm.test.tsx` +
+  `features/environmental-params/ThresholdsPage.test.tsx` (alertas disparadas en la respuesta,
+  permisos por rol), `features/facilities/FacilityDetailPage.test.tsx` (regresión: el banner de
+  alertas no debe persistir al navegar a otra instalación ya cacheada),
+  `features/environmental-params/queryKeyIsolation.test.tsx` (regresión: crear una instalación no
+  debe refetchear las lecturas de otra — ver §7 para ambos hallazgos), y
+  `features/dashboard/DashboardPage.test.tsx` (conteos, link de cada alerta a su instalación, estado
+  vacío), con `httpClient` mockeado en todos.
+- Las cuatro rebanadas de backend (Auth, Facility, EnvironmentalReading, Dashboard) se verificaron no
+  solo con `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`)
+  hablando con Postgres real — incluyendo el flujo completo umbral→lectura→alerta→dashboard. Lo mismo
+  del lado frontend, contra ese mismo backend real (ver entradas de arriba).
 
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Decidir con Rafael qué sigue: (a) Dashboard (Fase 1, backend: algún endpoint de resumen/métricas
-   + frontend), o (b) empezar ya a conectar el frontend con lo que existe (login + facilities +
-   readings/alerts) antes de seguir sumando endpoints de backend, o (c) saltar a Fase 2
-   (turnos/personal, incidencias, alimentación, trazabilidad de lote).
-2. Cuando se conecte el frontend: necesitará su propio cliente HTTP/auth (guardar el JWT, adjuntarlo
-   en las peticiones, manejar 401/403) — primer trabajo real de frontend del proyecto.
+1. Rafael le da un vistazo manual de todos modos, tanto al PR sin mergear como a la app ya
+   desplegada en vivo — esta sesión verificó con un navegador automatizado (Playwright headless:
+   login, las 5 pantallas, mobile, `axe-core`, y luego contra las URLs públicas reales), pero eso no
+   reemplaza un ojo humano real, sobre todo para cosas de gusto/detalle visual que un test no juzga.
+2. Mergear el PR #1 a `main` en algún momento — el deploy en vivo se hizo desde la rama del PR
+   (tenía todo el frontend), así que `main` todavía no refleja el estado desplegado. No bloqueante
+   para seguir trabajando, pero sí para que el repo y lo que está en producción cuenten la misma
+   historia.
+3. Fase 1 está completa de punta a punta (funcionalidad, pulido, despliegue). Queda decidir: saltar
+   a Fase 2 (turnos/personal, incidencias, alimentación, trazabilidad de lote), o los stretch goals
+   de Fase 3.
 
 **Bloqueos/problemas conocidos:** ninguno. Ver §7 para varios gotchas de entorno ya resueltos y
 documentados (puerto de Postgres, longitud mínima del secreto JWT, timing de `IOptions`) para que no

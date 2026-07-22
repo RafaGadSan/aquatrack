@@ -29,6 +29,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-aquatrack};Username=${POSTGRES_USER:-aquatrack};Password=${POSTGRES_PASSWORD:-aquatrack}"
       Jwt__Secret: ${JWT_SECRET:-dev-only-secret-change-me}
+      Cors__AllowedOrigin: ${CORS_ALLOWED_ORIGIN:-http://localhost:5173}
     ports:
       - "5000:8080"
 

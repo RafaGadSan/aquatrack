@@ -1,8 +1,36 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import { AuthenticatedLayout } from './layouts/AuthenticatedLayout'
+import { LoginPage } from './features/auth/LoginPage'
+import { ProtectedRoute } from './routes/ProtectedRoute'
+import { FacilitiesPage } from './features/facilities/FacilitiesPage'
+import { FacilityDetailPage } from './features/facilities/FacilityDetailPage'
+import { ThresholdsPage } from './features/environmental-params/ThresholdsPage'
+import { DashboardPage } from './features/dashboard/DashboardPage'
+
+const queryClient = new QueryClient()
+
 function App() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <h1 className="text-2xl font-semibold text-slate-800">AquaTrack</h1>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AuthenticatedLayout />}>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/facilities" element={<FacilitiesPage />} />
+                <Route path="/facilities/:id" element={<FacilityDetailPage />} />
+                <Route path="/thresholds" element={<ThresholdsPage />} />
+              </Route>
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
 
