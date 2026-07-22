@@ -224,16 +224,29 @@ docker compose down
   del SO — en esta máquina (Windows en español) salían en español, pero en el contenedor Linux
   desplegado saldrían en inglés. Sin esto, el comportamiento de validación depende silenciosamente
   de dónde se ejecuta.
+- **2026-07-22** — Matriz de autorización de `Facility` en Fase 1: crear → **Admin**; leer (listar y
+  por id) → cualquier rol autenticado; cambiar estado → **Admin, ShiftLead**. Sin endpoint de borrado
+  — en este dominio una instalación no se elimina, se pone en estado `Empty` (`ChangeStatus`). Sin
+  endpoint de rename en esta rebanada (se añade si hace falta). Es una elección por defecto, no una
+  confirmación explícita de Rafael — revisar si el reparto de permisos no encaja al usarlo de verdad.
+- **2026-07-22** — Índice único en `Facility.Name`: no existe todavía el concepto de "sitio/planta",
+  así que dos instalaciones con el mismo nombre exacto se consideran un error, no un caso legítimo.
+  Revisar si en el futuro hace falta permitir nombres repetidos entre sitios distintos.
+- **2026-07-22** — La factory de tests de integración (`AquaTrackWebApplicationFactory`) siembra un
+  usuario por rol y expone `LoginAsync(client, email)`, para que los tests de autorización hagan
+  login real vía `POST /api/auth/login` y ejerciten el pipeline completo de JWT +
+  `[Authorize(Roles=...)]`, en vez de fabricar un token a mano. Patrón a reutilizar en las próximas
+  rebanadas que necesiten probar permisos.
 
 ## 8. Estado actual
 
 **Última sesión:** 2026-07-22
 
 **Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. Del checklist de Fase 1 MVP están
-hechos el modelo de dominio y la rebanada vertical de Auth (login); quedan CRUD de instalaciones,
-parámetros ambientales, alertas y dashboard. El detalle línea a línea de qué se tocó en cada sesión
-vive en el historial de git (`git log --oneline`), no hace falta repetirlo aquí — esta sección solo
-recoge el estado y lo que no es obvio a partir del código.
+hechos el modelo de dominio, Auth (login) y CRUD de `Facility`; quedan parámetros ambientales,
+alertas y dashboard. El detalle línea a línea de qué se tocó en cada sesión vive en el historial de
+git (`git log --oneline`), no hace falta repetirlo aquí — esta sección solo recoge el estado y lo
+que no es obvio a partir del código.
 
 **Hecho hasta ahora (por área):**
 - **Repo y CI:** repo público en https://github.com/RafaGadSan/aquatrack, monorepo, `.gitignore`,
@@ -241,29 +254,36 @@ recoge el estado y lo que no es obvio a partir del código.
   (`backend-ci.yml`, `frontend-ci.yml`) — ambos verificados en verde contra pushes reales, no solo
   localmente.
 - **Frontend:** scaffold Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack Query +
-  Recharts + Vitest, sin features de negocio todavía.
+  Recharts + Vitest, sin features de negocio todavía — no consume ningún endpoint del backend aún.
 - **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
   `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). 30 unit tests. Ver
   §7 para las decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
-- **Backend — Auth (Fase 1, rebanada vertical completa):** `POST /api/auth/login` funcionando de
-  extremo a extremo — probado tanto con `dotnet run` local contra Postgres dockerizado como con el
-  stack 100% dockerizado (`docker compose up`). Incluye: JWT (HS256, 8h, sin refresh tokens),
-  hashing de contraseñas (PBKDF2 vía ASP.NET Core Identity), `AquaTrackDbContext` con la primera
-  migración (`InitialCreate`, solo tabla `Users`), seed de 3 usuarios demo (uno por rol — ver
-  credenciales en `DbInitializer.cs`), middleware de errores centralizado, y 11 tests (8 unit con
-  Moq + 3 integration con `WebApplicationFactory`+SQLite in-memory). Todavía **sin registro
-  público** (decisión confirmada, ver §7) — los usuarios solo existen vía seed.
-- Ningún endpoint más allá de Auth (Facility, EnvironmentalReading, Alert no tienen DbContext
-  mapping, repos, servicios de Application ni controllers todavía).
+- **Backend — Auth (Fase 1, rebanada vertical completa):** `POST /api/auth/login` — JWT (HS256, 8h,
+  sin refresh tokens), hashing PBKDF2 vía ASP.NET Core Identity, seed de 3 usuarios demo (uno por
+  rol — credenciales en `DbInitializer.cs`), middleware de errores centralizado.
+- **Backend — Facility (Fase 1, rebanada vertical completa):** `POST/GET /api/facilities`,
+  `GET /api/facilities/{id}`, `PUT /api/facilities/{id}/status`, con autorización por rol real
+  (`[Authorize(Roles=...)]` — ver matriz en §7). Primer endpoint que ejercita permisos de verdad.
+- **Persistencia:** `AquaTrackDbContext` mapea `User` y `Facility` (2 migraciones: `InitialCreate`,
+  `AddFacility`). `EnvironmentalReading`, `ParameterThreshold`, `Alert` siguen sin mapear — se hará
+  en sus propias rebanadas.
+- **Tests backend:** 54 en total (30 Domain + 14 Application + 10 Api.IntegrationTests), todos en
+  verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión. Los tests de
+  integración loguean de verdad contra los 3 roles seed (ver §7) para probar autorización end to
+  end, no solo simular tokens.
+- Ambas rebanadas (Auth y Facility) se verificaron no solo con `dotnet test`, sino también contra el
+  stack 100% dockerizado (`docker compose up`) hablando con Postgres real.
 
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Siguiente rebanada vertical natural: CRUD de `Facility` (Application + Infrastructure/EF mapping
-   + migración + Api controller, protegido con `[Authorize]` ahora que la auth existe) — sería el
-   primer endpoint que realmente ejercita los roles (p. ej. solo Admin/ShiftLead pueden crear).
-2. Cuando llegue esa rebanada: decidir cómo probar autorización por rol (tests de integración con un
-   token generado a medida, no solo login).
+1. Siguiente rebanada vertical natural: `EnvironmentalReading` (registro de parámetros por
+   instalación) — es el primer paso hacia las alertas automáticas, que ya tienen la lógica de
+   dominio (`AlertEvaluator`) lista desde la Fase 1 de dominio, solo falta conectarla a un caso de
+   uso real (guardar lectura → evaluar → persistir alertas disparadas).
+2. En algún momento: empezar a consumir la API desde el frontend (por ahora 100% desconectado del
+   backend) — probablemente tenga más sentido esperar a tener 2-3 rebanadas de backend más para no
+   ir reconstruyendo el cliente HTTP/auth del frontend en cada slice.
 
 **Bloqueos/problemas conocidos:** ninguno. Ver §7 para varios gotchas de entorno ya resueltos y
 documentados (puerto de Postgres, longitud mínima del secreto JWT, timing de `IOptions`) para que no

@@ -17,7 +17,8 @@ Checklist de avance por fase. Se actualiza en cada sesión (ver `CLAUDE.md` secc
 - [x] Modelo de dominio inicial (entidades `User`, `Facility`, `EnvironmentalReading`,
       `ParameterThreshold`, `Alert` + lógica de cálculo de alertas `AlertEvaluator`, con 30 unit tests)
 - [x] Autenticación JWT (solo Login; sin registro público — ver `CLAUDE.md` §7) + roles (Admin, ShiftLead, Operator)
-- [ ] CRUD de instalaciones/lotes de cultivo (jaulas/tanques), con estado (activo, en cosecha, vacío)
+- [x] CRUD de instalaciones (jaulas/tanques), con estado (activo, en cosecha, vacío) — API con roles
+      (crear: Admin; cambiar estado: Admin/ShiftLead; leer: cualquiera). Falta CRUD desde el frontend.
 - [ ] Registro de parámetros ambientales (temperatura, oxígeno disuelto, salinidad, pH) por instalación
 - [ ] Alertas automáticas cuando un parámetro sale de rango configurable
 - [ ] Dashboard mínimo funcional (alertas activas, resumen básico)
