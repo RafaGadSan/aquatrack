@@ -26,7 +26,7 @@ public class AuthEndpointsTests : IClassFixture<AquaTrackWebApplicationFactory>
     [Fact]
     public async Task Login_ReturnsToken_ForSeededUser()
     {
-        var request = new LoginRequest(AquaTrackWebApplicationFactory.SeededUserEmail, AquaTrackWebApplicationFactory.SeededUserPassword);
+        var request = new LoginRequest(AquaTrackWebApplicationFactory.OperatorEmail, AquaTrackWebApplicationFactory.TestPassword);
 
         var response = await _client.PostAsJsonAsync("/api/auth/login", request);
 
@@ -34,13 +34,13 @@ public class AuthEndpointsTests : IClassFixture<AquaTrackWebApplicationFactory>
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
         Assert.NotNull(body);
         Assert.False(string.IsNullOrWhiteSpace(body!.Token));
-        Assert.Equal(AquaTrackWebApplicationFactory.SeededUserEmail, body.Email);
+        Assert.Equal(AquaTrackWebApplicationFactory.OperatorEmail, body.Email);
     }
 
     [Fact]
     public async Task Login_ReturnsUnauthorized_ForWrongPassword()
     {
-        var request = new LoginRequest(AquaTrackWebApplicationFactory.SeededUserEmail, "wrong-password");
+        var request = new LoginRequest(AquaTrackWebApplicationFactory.OperatorEmail, "wrong-password");
 
         var response = await _client.PostAsJsonAsync("/api/auth/login", request);
 

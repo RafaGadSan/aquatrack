@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using AquaTrack.Application.Interfaces;
 using AquaTrack.Domain.Entities;
 using AquaTrack.Domain.Enums;
@@ -18,11 +20,16 @@ namespace AquaTrack.Api.IntegrationTests;
 /// Postgres instance (Testcontainers-style integration testing is left for when it earns its
 /// setup cost). The connection is kept open for the factory's lifetime, since SQLite drops an
 /// in-memory database as soon as its last connection closes.
+///
+/// Seeds one user per role so authorization tests can log in for real (POST /api/auth/login) and
+/// exercise the actual JWT + [Authorize(Roles=...)] pipeline, instead of fabricating tokens.
 /// </summary>
 public class AquaTrackWebApplicationFactory : WebApplicationFactory<Program>
 {
-    public const string SeededUserEmail = "test.user@aquatrack.dev";
-    public const string SeededUserPassword = "TestPassword123!";
+    public const string TestPassword = "TestPassword123!";
+    public const string AdminEmail = "test.admin@aquatrack.dev";
+    public const string ShiftLeadEmail = "test.shiftlead@aquatrack.dev";
+    public const string OperatorEmail = "test.operator@aquatrack.dev";
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 
@@ -52,9 +59,21 @@ public class AquaTrackWebApplicationFactory : WebApplicationFactory<Program>
             context.Database.EnsureCreated();
 
             var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-            context.Users.Add(new User(SeededUserEmail, passwordHasher.Hash(SeededUserPassword), "Test User", Role.Operator));
+            context.Users.AddRange(
+                new User(AdminEmail, passwordHasher.Hash(TestPassword), "Test Admin", Role.Admin),
+                new User(ShiftLeadEmail, passwordHasher.Hash(TestPassword), "Test Shift Lead", Role.ShiftLead),
+                new User(OperatorEmail, passwordHasher.Hash(TestPassword), "Test Operator", Role.Operator));
             context.SaveChanges();
         });
+    }
+
+    /// <summary>Logs in as the given seeded user and returns the JWT, for tests that need an authenticated client.</summary>
+    public async Task<string> LoginAsync(HttpClient client, string email)
+    {
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password = TestPassword });
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("token").GetString()!;
     }
 
     protected override void Dispose(bool disposing)
