@@ -256,6 +256,19 @@ docker compose down
 - **2026-07-22** — Columnas `decimal` con precisión explícita en Postgres: `numeric(6,2)` para
   medidas (temperatura, oxígeno, salinidad, valores de alerta/umbral), `numeric(4,2)` para pH — para
   no depender del mapeo por defecto de Npgsql.
+- **2026-07-22** — Primera rebanada de frontend: Auth (login). Sesión de usuario en React Context
+  (`AuthContext`, `src/context/`) respaldada por `localStorage` bajo la clave `aquatrack.auth`
+  (persiste el `AuthResponse` completo — token, expiración, datos del usuario), no una librería de
+  estado global — coherente con el backend, que ya simplificó deliberadamente sin refresh tokens
+  (ver entrada anterior sobre JWT de 8h). Un cliente axios único (`src/lib/httpClient.ts`) adjunta el
+  Bearer token vía interceptor de request; un interceptor de response detecta 401 y hace un
+  `window.location.href = '/login'` (redirect duro, no via React Router) para no acoplar el cliente
+  HTTP a la instancia del router. `ProtectedRoute` (`src/routes/`) redirige a `/login` conservando la
+  ruta de origen en `location.state.from` para volver ahí tras iniciar sesión.
+- **2026-07-22** — Las llamadas a la API viven junto a cada feature (`src/features/<nombre>/api.ts`,
+  ej. `features/auth/api.ts`), no en el `src/api/` compartido del esqueleto original — coherente con
+  la organización por feature ya elegida para el frontend. `src/api/` queda vacío por ahora; se
+  usará si aparece lógica de verdad transversal entre features.
 
 ## 8. Estado actual
 
@@ -263,18 +276,32 @@ docker compose down
 
 **Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Todo el checklist funcional de
 Fase 1 MVP del backend está hecho**: dominio, Auth (login), CRUD de `Facility`, registro de
-parámetros ambientales y alertas automáticas. Queda el dashboard (backend + frontend) y, en general,
-que el frontend consuma cualquiera de estos endpoints (sigue 100% desconectado). El detalle línea a
-línea de qué se tocó en cada sesión vive en el historial de git (`git log --oneline`), no hace falta
-repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a partir del código.
+parámetros ambientales y alertas automáticas. El frontend ya no está desconectado: tiene su primera
+rebanada real (login + sesión persistida + rutas protegidas). Queda el dashboard (backend + frontend)
+y conectar el resto de pantallas (facilities, readings, alerts) a lo que el backend ya expone. El
+detalle línea a línea de qué se tocó en cada sesión vive en el historial de git
+(`git log --oneline`), no hace falta repetirlo aquí — esta sección solo recoge el estado y lo que no
+es obvio a partir del código.
 
 **Hecho hasta ahora (por área):**
 - **Repo y CI:** repo público en https://github.com/RafaGadSan/aquatrack, monorepo, `.gitignore`,
   Docker Compose (postgres + backend + frontend) y dos workflows de GitHub Actions
   (`backend-ci.yml`, `frontend-ci.yml`) — ambos verificados en verde contra pushes reales, no solo
   localmente.
-- **Frontend:** scaffold Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack Query +
-  Recharts + Vitest, sin features de negocio todavía — no consume ningún endpoint del backend aún.
+- **Frontend — Auth (primera rebanada real):** login (`features/auth/LoginPage.tsx`) contra
+  `POST /api/auth/login`, sesión en `AuthContext` respaldada por `localStorage`, cliente axios
+  compartido con interceptors de token/401 (`lib/httpClient.ts`), rutas protegidas
+  (`routes/ProtectedRoute.tsx`) y layout autenticado con botón de cierre de sesión
+  (`layouts/AuthenticatedLayout.tsx`). Ver §7 para las decisiones (por qué Context+localStorage y no
+  una librería de estado global, por qué el redirect en 401 es duro y no vía router). Verificado
+  contra el backend real: build de producción (`docker compose up`) + `curl` al login confirmando que
+  la forma de la respuesta (`token`, `expiresAt`, `userId`, `email`, `fullName`, `role`) coincide con
+  los tipos TS, y que `/` y `/login` resuelven bien vía el fallback SPA de Nginx. Sin verificación
+  interactiva en navegador real (sin herramienta de automatización de navegador disponible en esta
+  sesión) — pendiente de un vistazo manual de Rafael antes de darlo por bueno del todo.
+- **Frontend — el resto:** scaffold Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack
+  Query + Recharts + Vitest. Facilities, environmental readings/alerts y dashboard aún no tienen
+  pantalla — el backend ya expone esos endpoints (ver más abajo), solo falta consumirlos.
 - **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
   `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). Ver §7 para las
   decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
@@ -294,19 +321,23 @@ repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a p
   `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
 - **Tests backend:** 68 en total (30 Domain + 23 Application + 15 Api.IntegrationTests), todos en
   verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
-- Las tres rebanadas (Auth, Facility, EnvironmentalReading) se verificaron no solo con
+- **Tests frontend:** primeros tests reales del proyecto (7, en `lib/authStorage.test.ts` y
+  `features/auth/LoginPage.test.tsx`) — round-trip de `localStorage` y el formulario de login
+  (render, error de credenciales, sesión persistida en login exitoso), con `httpClient` mockeado.
+- Las tres rebanadas de backend (Auth, Facility, EnvironmentalReading) se verificaron no solo con
   `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`) hablando con
   Postgres real — incluyendo el flujo completo umbral→lectura→alerta.
 
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Decidir con Rafael qué sigue: (a) Dashboard (Fase 1, backend: algún endpoint de resumen/métricas
-   + frontend), o (b) empezar ya a conectar el frontend con lo que existe (login + facilities +
-   readings/alerts) antes de seguir sumando endpoints de backend, o (c) saltar a Fase 2
+1. Rafael revisa el login en un navegador real (esta sesión no pudo hacerlo — ver nota en la entrada
+   de Frontend Auth de más arriba).
+2. Conectar las pantallas de `facilities` (listar/crear/cambiar estado) y luego
+   `environmental-params`/`alerts`, reutilizando el patrón de esta rebanada (`features/<x>/api.ts` +
+   componentes de esa carpeta).
+3. Cuando esas pantallas existan: decidir Dashboard (Fase 1) vs. saltar a Fase 2
    (turnos/personal, incidencias, alimentación, trazabilidad de lote).
-2. Cuando se conecte el frontend: necesitará su propio cliente HTTP/auth (guardar el JWT, adjuntarlo
-   en las peticiones, manejar 401/403) — primer trabajo real de frontend del proyecto.
 
 **Bloqueos/problemas conocidos:** ninguno. Ver §7 para varios gotchas de entorno ya resueltos y
 documentados (puerto de Postgres, longitud mínima del secreto JWT, timing de `IOptions`) para que no
