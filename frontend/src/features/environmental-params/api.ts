@@ -4,7 +4,9 @@ import type { CreateEnvironmentalReadingRequest, EnvironmentalReadingResponse, R
 import type { CreateParameterThresholdRequest, ParameterThresholdResponse } from '../../types/parameterThreshold'
 import { alertsKey } from '../alerts/api'
 
-const readingsKey = (facilityId: string) => ['facilities', facilityId, 'readings'] as const
+// Same reasoning as alertsKey in features/alerts/api.ts: kept out of the ['facilities', ...]
+// prefix so invalidating the facilities list doesn't also invalidate every facility's readings.
+const readingsKey = (facilityId: string) => ['readings', facilityId] as const
 const thresholdsKey = ['parameter-thresholds'] as const
 
 async function fetchReadings(facilityId: string): Promise<EnvironmentalReadingResponse[]> {

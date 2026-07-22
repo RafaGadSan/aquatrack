@@ -307,6 +307,16 @@ docker compose down
   (`FacilityDetailPage.test.tsx`) visita ambas instalaciones primero para calentar la cache antes de
   reproducir el caso real. Cualquier página de detalle futura con estado local propio (no derivado de
   TanStack Query) debería tener el mismo cuidado con `key`.
+- **2026-07-22** — Segundo hallazgo de la misma autorevisión: las keys de TanStack Query de
+  `readings` y `alerts` estaban anidadas bajo `['facilities', facilityId, ...]` para agruparlas
+  visualmente, pero `invalidateQueries` matchea por **prefijo** por defecto — invalidar
+  `['facilities']` (al crear o cambiar el estado de una instalación) invalidaba también las lecturas
+  y alertas de **cualquier** instalación montada. Se movieron a namespaces propios (`['readings',
+  facilityId]`, `['alerts', facilityId]`), separados del prefijo `'facilities'`; `useFacility(id)`
+  se queda intencionalmente bajo ese prefijo porque sí debe refrescarse cuando cambia el estado de
+  la instalación. Verificado con un test que falla con la key vieja y pasa con la nueva
+  (`queryKeyIsolation.test.tsx`) — no alcanza con "se ve razonable", los invariantes de invalidación
+  de cache hay que probarlos.
 
 ## 8. Estado actual
 
@@ -375,12 +385,14 @@ repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a p
   `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
 - **Tests backend:** 68 en total (30 Domain + 23 Application + 15 Api.IntegrationTests), todos en
   verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
-- **Tests frontend:** 14 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
+- **Tests frontend:** 15 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
   (login), `features/facilities/FacilitiesPage.test.tsx` (permisos por rol),
   `features/environmental-params/RecordReadingForm.test.tsx` +
   `features/environmental-params/ThresholdsPage.test.tsx` (alertas disparadas en la respuesta,
-  permisos por rol), y `features/facilities/FacilityDetailPage.test.tsx` (regresión: el banner de
-  alertas no debe persistir al navegar a otra instalación ya cacheada — ver §7), con `httpClient`
+  permisos por rol), `features/facilities/FacilityDetailPage.test.tsx` (regresión: el banner de
+  alertas no debe persistir al navegar a otra instalación ya cacheada) y
+  `features/environmental-params/queryKeyIsolation.test.tsx` (regresión: crear una instalación no
+  debe refetchear las lecturas de otra — ver §7 para ambos hallazgos), con `httpClient`
   mockeado en todos.
 - Las tres rebanadas de backend (Auth, Facility, EnvironmentalReading) se verificaron no solo con
   `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`) hablando con
