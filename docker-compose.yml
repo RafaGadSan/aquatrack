@@ -6,7 +6,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aquatrack}
       POSTGRES_DB: ${POSTGRES_DB:-aquatrack}
     ports:
-      - "5432:5432"
+      # Host-side port only; kept off the default 5432 since that's commonly already taken by a
+      # locally-installed Postgres. Containers still reach this service as "postgres:5432" over
+      # the internal Docker network regardless of this mapping.
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
