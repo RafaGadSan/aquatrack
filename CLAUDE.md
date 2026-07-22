@@ -237,16 +237,36 @@ docker compose down
   login real vía `POST /api/auth/login` y ejerciten el pipeline completo de JWT +
   `[Authorize(Roles=...)]`, en vez de fabricar un token a mano. Patrón a reutilizar en las próximas
   rebanadas que necesiten probar permisos.
+- **2026-07-22** — Introducido `IUnitOfWork.SaveChangesAsync()` compartido, reemplazando el
+  `SaveChangesAsync()` propio de cada repositorio (incluido `IFacilityRepository`, migrado en la
+  misma sesión). Motivo: `EnvironmentalReadingService.RecordAsync` coordina tres repositorios
+  (lectura + umbrales + alertas) en una sola transacción, y "llama a `SaveChangesAsync` en el
+  repositorio X" deja de tener sentido cuando no hay un repositorio "dueño" claro de la operación.
+- **2026-07-22** — `POST /api/facilities/{id}/readings` está abierto a **cualquier rol
+  autenticado** (no solo Admin/ShiftLead) porque en la operación real es el operario quien toma las
+  medidas — coincide con la experiencia real de Rafael en el sector. Configurar umbrales
+  (`POST /api/parameter-thresholds`) sigue siendo solo Admin.
+- **2026-07-22** — Registrar una lectura devuelve las alertas disparadas **inline** en la respuesta
+  (`RecordReadingResult { Reading, TriggeredAlerts }`), no solo como efecto secundario invisible que
+  habría que consultar aparte — mejor UX para la demo y para el frontend cuando lo consuma.
+- **2026-07-22** — Las entidades `EnvironmentalReading`/`ParameterThreshold`/`Alert` se relacionan
+  con `Facility`/`User` solo por `Guid` (FK a nivel de EF vía `HasOne<T>().WithMany()`), sin
+  propiedades de navegación en el dominio — coherente con cómo ya estaban diseñadas las entidades de
+  dominio (desacopladas entre sí, solo IDs) desde la sesión de modelado inicial.
+- **2026-07-22** — Columnas `decimal` con precisión explícita en Postgres: `numeric(6,2)` para
+  medidas (temperatura, oxígeno, salinidad, valores de alerta/umbral), `numeric(4,2)` para pH — para
+  no depender del mapeo por defecto de Npgsql.
 
 ## 8. Estado actual
 
 **Última sesión:** 2026-07-22
 
-**Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. Del checklist de Fase 1 MVP están
-hechos el modelo de dominio, Auth (login) y CRUD de `Facility`; quedan parámetros ambientales,
-alertas y dashboard. El detalle línea a línea de qué se tocó en cada sesión vive en el historial de
-git (`git log --oneline`), no hace falta repetirlo aquí — esta sección solo recoge el estado y lo
-que no es obvio a partir del código.
+**Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Todo el checklist funcional de
+Fase 1 MVP del backend está hecho**: dominio, Auth (login), CRUD de `Facility`, registro de
+parámetros ambientales y alertas automáticas. Queda el dashboard (backend + frontend) y, en general,
+que el frontend consuma cualquiera de estos endpoints (sigue 100% desconectado). El detalle línea a
+línea de qué se tocó en cada sesión vive en el historial de git (`git log --oneline`), no hace falta
+repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a partir del código.
 
 **Hecho hasta ahora (por área):**
 - **Repo y CI:** repo público en https://github.com/RafaGadSan/aquatrack, monorepo, `.gitignore`,
@@ -256,34 +276,37 @@ que no es obvio a partir del código.
 - **Frontend:** scaffold Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack Query +
   Recharts + Vitest, sin features de negocio todavía — no consume ningún endpoint del backend aún.
 - **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
-  `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). 30 unit tests. Ver
-  §7 para las decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
-- **Backend — Auth (Fase 1, rebanada vertical completa):** `POST /api/auth/login` — JWT (HS256, 8h,
-  sin refresh tokens), hashing PBKDF2 vía ASP.NET Core Identity, seed de 3 usuarios demo (uno por
-  rol — credenciales en `DbInitializer.cs`), middleware de errores centralizado.
-- **Backend — Facility (Fase 1, rebanada vertical completa):** `POST/GET /api/facilities`,
-  `GET /api/facilities/{id}`, `PUT /api/facilities/{id}/status`, con autorización por rol real
-  (`[Authorize(Roles=...)]` — ver matriz en §7). Primer endpoint que ejercita permisos de verdad.
-- **Persistencia:** `AquaTrackDbContext` mapea `User` y `Facility` (2 migraciones: `InitialCreate`,
-  `AddFacility`). `EnvironmentalReading`, `ParameterThreshold`, `Alert` siguen sin mapear — se hará
-  en sus propias rebanadas.
-- **Tests backend:** 54 en total (30 Domain + 14 Application + 10 Api.IntegrationTests), todos en
-  verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión. Los tests de
-  integración loguean de verdad contra los 3 roles seed (ver §7) para probar autorización end to
-  end, no solo simular tokens.
-- Ambas rebanadas (Auth y Facility) se verificaron no solo con `dotnet test`, sino también contra el
-  stack 100% dockerizado (`docker compose up`) hablando con Postgres real.
+  `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). Ver §7 para las
+  decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
+- **Backend — Auth:** `POST /api/auth/login` — JWT (HS256, 8h, sin refresh tokens), hashing PBKDF2
+  vía ASP.NET Core Identity, seed de 3 usuarios demo (uno por rol — credenciales en
+  `DbInitializer.cs`), middleware de errores centralizado.
+- **Backend — Facility:** `POST/GET /api/facilities`, `GET /api/facilities/{id}`,
+  `PUT /api/facilities/{id}/status`, con autorización por rol (`[Authorize(Roles=...)]` — matriz en §7).
+- **Backend — EnvironmentalReading/ParameterThreshold/Alert (rebanada vertical completa, cierra
+  Fase 1 MVP del backend):** `POST/GET /api/facilities/{id}/readings`,
+  `GET /api/facilities/{id}/alerts`, `POST/GET /api/parameter-thresholds`. Registrar una lectura
+  evalúa automáticamente los umbrales aplicables (`AlertEvaluator`, ya existente desde el modelado
+  de dominio) y persiste cualquier alerta disparada en la misma transacción
+  (`IUnitOfWork` — ver §7). Cualquier rol autenticado puede registrar lecturas (coincide con cómo se
+  hace en la operación real); solo Admin configura umbrales.
+- **Persistencia:** `AquaTrackDbContext` mapea las 5 entidades de dominio (3 migraciones:
+  `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
+- **Tests backend:** 68 en total (30 Domain + 23 Application + 15 Api.IntegrationTests), todos en
+  verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
+- Las tres rebanadas (Auth, Facility, EnvironmentalReading) se verificaron no solo con
+  `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`) hablando con
+  Postgres real — incluyendo el flujo completo umbral→lectura→alerta.
 
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Siguiente rebanada vertical natural: `EnvironmentalReading` (registro de parámetros por
-   instalación) — es el primer paso hacia las alertas automáticas, que ya tienen la lógica de
-   dominio (`AlertEvaluator`) lista desde la Fase 1 de dominio, solo falta conectarla a un caso de
-   uso real (guardar lectura → evaluar → persistir alertas disparadas).
-2. En algún momento: empezar a consumir la API desde el frontend (por ahora 100% desconectado del
-   backend) — probablemente tenga más sentido esperar a tener 2-3 rebanadas de backend más para no
-   ir reconstruyendo el cliente HTTP/auth del frontend en cada slice.
+1. Decidir con Rafael qué sigue: (a) Dashboard (Fase 1, backend: algún endpoint de resumen/métricas
+   + frontend), o (b) empezar ya a conectar el frontend con lo que existe (login + facilities +
+   readings/alerts) antes de seguir sumando endpoints de backend, o (c) saltar a Fase 2
+   (turnos/personal, incidencias, alimentación, trazabilidad de lote).
+2. Cuando se conecte el frontend: necesitará su propio cliente HTTP/auth (guardar el JWT, adjuntarlo
+   en las peticiones, manejar 401/403) — primer trabajo real de frontend del proyecto.
 
 **Bloqueos/problemas conocidos:** ninguno. Ver §7 para varios gotchas de entorno ya resueltos y
 documentados (puerto de Postgres, longitud mínima del secreto JWT, timing de `IOptions`) para que no
