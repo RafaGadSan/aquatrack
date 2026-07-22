@@ -331,6 +331,38 @@ docker compose down
   ya usaba `FacilitiesPage`/`AlertsList`, sin introducir una paleta nueva. Verificado extremo a
   extremo con `docker compose` + `curl` (umbral→lectura→alerta→dashboard) antes de tocar el frontend,
   seguido del mismo patrón de esta sesión.
+- **2026-07-22** — Bug real y serio, encontrado durante el pulido de Fase 1: **el backend no tenía
+  CORS configurado**. `curl` y los tests de integración (`HttpClient` de xUnit) nunca lo iban a
+  detectar porque ninguno de los dos aplica la política de mismo origen de un navegador real —
+  solo apareció al automatizar un navegador headless de verdad (Playwright, instalado sobre la
+  marcha en esta sesión porque `chromium-cli` no estaba disponible en este entorno Windows) para
+  sacar capturas para el README: el login fallaba con `net::ERR_FAILED` en vez de devolver un error
+  de credenciales. Es decir, **la app nunca había funcionado en un navegador real** desde que existe
+  frontend, pese a que cada rebanada se había dado por verificada. Arreglado con
+  `builder.Services.AddCors(...)` + `app.UseCors("Frontend")` en `Program.cs`, origen configurable
+  vía `Cors:AllowedOrigin` (`CORS_ALLOWED_ORIGIN` en `.env`/`docker-compose.yml`, default
+  `http://localhost:5173`, coincide con el puerto de Vite/Nginx en ambos casos). Test de regresión
+  en `CorsTests.cs` (falla sin `UseCors`, pasa con él). **Lección para el futuro:** `curl`/tests de
+  integración verifican que el backend responde correctamente: no verifican que un navegador real
+  pueda *llegar* a esa respuesta. Cualquier duda sobre "¿esto funciona en la app de verdad?" necesita
+  un navegador de verdad, no solo la API por su cuenta.
+- **2026-07-22** — El mismo navegador headless permitió, por primera vez en el proyecto, verificar
+  responsive y accesibilidad contra la app real en vez de solo leer el código:
+  - **Responsive:** una captura a 390px de ancho mostró el header (`AuthenticatedLayout`)
+    desbordándose horizontalmente — nombre de usuario y botón de cerrar sesión cortados. Corregido
+    con un layout que apila en columna en mobile y pasa a fila en `sm:`; tablas (`FacilitiesPage`,
+    `ReadingsList`, `ThresholdsPage`) envueltas en `overflow-x-auto` para que el contenido ancho
+    haga scroll dentro de su propio contenedor en vez de romper el layout de la página.
+  - **Accesibilidad:** auditoría con `axe-core` (inyectado en el navegador headless) contra las 5
+    pantallas principales encontró 3 problemas reales: contraste insuficiente en `bg-sky-600`/
+    `text-sky-600` (oscurecido a `sky-700`/`sky-800` en botones y links, ver contraste WCAG AA),
+    `LoginPage` sin landmark `<main>` (todo su contenido quedaba fuera de cualquier región para
+    lectores de pantalla), y el `<select>` de cambio de estado por fila en `FacilitiesPage` sin
+    nombre accesible (`aria-label="Status for {name}"` — antes un lector de pantalla solo anunciaba
+    "combobox" sin decir de qué instalación). 0 violaciones tras corregir los tres.
+  - Ninguno de estos dos problemas era visible leyendo el código o los tests — ambos necesitaban una
+    verificación *renderizada* (visual para responsive, con `axe-core` para accesibilidad) contra la
+    app real corriendo.
 
 ## 8. Estado actual
 
@@ -338,11 +370,14 @@ docker compose down
 
 **Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Todo el checklist funcional de
 Fase 1 MVP está hecho, backend y frontend por igual**: dominio, Auth (login), CRUD de `Facility`,
-registro de parámetros ambientales, alertas automáticas y Dashboard — ver `PROGRESS.md`. Lo único que
-queda de Fase 1 es "pulido" (README profesional, responsive, accesibilidad, despliegue), no
-funcionalidad. El detalle línea a línea de qué se tocó en cada sesión vive en el historial de git
-(`git log --oneline`), no hace falta repetirlo aquí — esta sección solo recoge el estado y lo que no
-es obvio a partir del código.
+registro de parámetros ambientales, alertas automáticas y Dashboard — ver `PROGRESS.md`. El pulido de
+Fase 1 (README, responsive, accesibilidad) también está hecho — solo queda el despliegue, que
+necesita cuentas de cloud reales. La app se verificó por primera vez esta sesión contra un **navegador
+real** (Playwright headless, no solo `curl`), lo que encontró y corrigió un bug que llevaba desde el
+principio del frontend sin detectarse: **CORS no estaba configurado**, así que la app nunca había
+funcionado realmente en un navegador (ver §7). El detalle línea a línea de qué se tocó en cada sesión
+vive en el historial de git (`git log --oneline`), no hace falta repetirlo aquí — esta sección solo
+recoge el estado y lo que no es obvio a partir del código.
 
 **Hecho hasta ahora (por área):**
 - **Repo y CI:** repo público en https://github.com/RafaGadSan/aquatrack, monorepo, `.gitignore`,
@@ -357,9 +392,10 @@ es obvio a partir del código.
   una librería de estado global, por qué el redirect en 401 es duro y no vía router). Verificado
   contra el backend real: build de producción (`docker compose up`) + `curl` al login confirmando que
   la forma de la respuesta (`token`, `expiresAt`, `userId`, `email`, `fullName`, `role`) coincide con
-  los tipos TS, y que `/` y `/login` resuelven bien vía el fallback SPA de Nginx. Sin verificación
-  interactiva en navegador real (sin herramienta de automatización de navegador disponible en esta
-  sesión) — pendiente de un vistazo manual de Rafael antes de darlo por bueno del todo.
+  los tipos TS, y que `/` y `/login` resuelven bien vía el fallback SPA de Nginx. Verificado más
+  tarde en esta misma sesión contra un navegador real (Playwright headless) durante el pulido de
+  Fase 1 — ver la entrada del bug de CORS en §7, que hasta ese momento rompía el login para
+  cualquier navegador real pese a que esta verificación por `curl` ya daba todo por bueno.
 - **Frontend — Facilities (segunda rebanada real, ruta índice `/`):** lista de instalaciones
   (`features/facilities/FacilitiesPage.tsx`) contra `GET /api/facilities`, alta
   (`CreateFacilityForm.tsx`, solo visible para Admin) contra `POST /api/facilities`, y cambio de
@@ -375,8 +411,7 @@ es obvio a partir del código.
   `/thresholds`) con alta restringida a Admin. Verificado contra el backend real (`docker compose
   up`): flujo completo umbral→lectura→alerta vía `curl`, incluyendo el caso que dispara la alerta.
   Esta verificación encontró y corrigió un bug real antes de mergear — ver la entrada sobre `ph` en
-  minúsculas en §7. Sin verificación interactiva en navegador (misma limitación que las rebanadas
-  anteriores).
+  minúsculas en §7. Verificado contra navegador real en el pulido de Fase 1 (ver CORS en §7).
 - **Frontend — Dashboard (cuarta rebanada real, nueva ruta índice `/`):** stat tiles (instalaciones
   por estado, total, alertas activas) y lista de alertas activas de todas las instalaciones con link
   a cada una (`features/dashboard/DashboardPage.tsx`) contra `GET /api/dashboard/summary`. `Facilities`
@@ -384,6 +419,15 @@ es obvio a partir del código.
   Thresholds). Ver §7 para la decisión de stat tiles en vez de gráficos. Con esto el frontend
   funcionalmente ya no tiene nada pendiente de Fase 1 por conectar.
 - **Backend — Dashboard:** `GET /api/dashboard/summary` (cualquier rol autenticado) — ver §7.
+- **Pulido de Fase 1 (README, CORS, responsive, accesibilidad):** primera verificación de la app
+  completa contra un navegador real (Playwright headless, instalado sobre la marcha — ver §7),
+  usada para tres cosas: (1) capturas reales para `README.md` (`docs/screenshots/`, no maquetas),
+  (2) encontrar y corregir el bug de CORS que rompía el login en cualquier navegador real desde el
+  principio del frontend, (3) encontrar y corregir un desborde real de header en mobile y 3
+  violaciones de accesibilidad reales vía `axe-core` (contraste, landmark `<main>` faltante,
+  `<select>` sin nombre accesible) — 0 violaciones tras corregir. `README.md` reescrito completo
+  (problema, capturas, stack, diagrama Mermaid de arquitectura, decisiones técnicas curadas,
+  roadmap). Ver §7 para el detalle de cada hallazgo.
 - **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
   `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). Ver §7 para las
   decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
@@ -401,8 +445,9 @@ es obvio a partir del código.
   hace en la operación real); solo Admin configura umbrales.
 - **Persistencia:** `AquaTrackDbContext` mapea las 5 entidades de dominio (3 migraciones:
   `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
-- **Tests backend:** 73 en total (30 Domain + 26 Application + 17 Api.IntegrationTests), todos en
-  verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
+- **Tests backend:** 75 en total (30 Domain + 26 Application + 19 Api.IntegrationTests — incluye
+  `CorsTests.cs`), todos en verde en local y en el `Backend CI` de GitHub tras cada push de esta
+  sesión.
 - **Tests frontend:** 17 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
   (login), `features/facilities/FacilitiesPage.test.tsx` (permisos por rol),
   `features/environmental-params/RecordReadingForm.test.tsx` +
@@ -421,13 +466,13 @@ es obvio a partir del código.
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Rafael revisa toda la app en un navegador real (login, dashboard, facilities, readings/alerts,
-   thresholds) — esta sesión no pudo, sin herramienta de automatización de navegador disponible; todo
-   lo demás sí se verificó contra el backend real vía `curl`/`docker compose`. Pendiente, no bloqueante.
-2. Con Fase 1 funcionalmente completa (backend + frontend), decidir: (a) saltar a Fase 2
-   (turnos/personal, incidencias, alimentación, trazabilidad de lote), o (b) el pulido que quedó
-   pendiente de Fase 1 (README profesional, responsive, accesibilidad, despliegue — ver
-   `PROGRESS.md`).
+1. Rafael le da un vistazo manual de todos modos — esta sesión verificó con un navegador automatizado
+   (Playwright headless: login, las 5 pantallas, mobile, `axe-core`), pero eso no reemplaza un ojo
+   humano real, sobre todo para cosas de gusto/detalle visual que un test no juzga.
+2. Fase 1 está completa (funcionalidad + pulido). Queda decidir: (a) saltar a Fase 2
+   (turnos/personal, incidencias, alimentación, trazabilidad de lote), o (b) el despliegue inicial
+   (backend/frontend/DB), que necesita cuentas de cloud reales que esta sesión no tiene — ver
+   `PROGRESS.md`.
 
 **Bloqueos/problemas conocidos:** ninguno. Ver §7 para varios gotchas de entorno ya resueltos y
 documentados (puerto de Postgres, longitud mínima del secreto JWT, timing de `IOptions`) para que no

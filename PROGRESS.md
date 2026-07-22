@@ -29,7 +29,9 @@ Checklist de avance por fase. Se actualiza en cada sesión (ver `CLAUDE.md` secc
       (instalaciones por estado, alertas activas con nombre de instalación resuelto) + frontend en `/`
       (nueva página de inicio; Facilities se movió a `/facilities`).
 - [x] Seed data con datos de ejemplo realistas (3 usuarios demo, uno por rol — se irá ampliando por slice)
-- [ ] Despliegue inicial (backend + frontend + DB) con datos de ejemplo
+- [ ] Despliegue inicial (backend + frontend + DB) con datos de ejemplo — requiere cuentas reales en
+      Railway/Render/Vercel/Neon (ver stack en §2 de `CLAUDE.md`) que esta sesión no tiene; el resto
+      de Fase 1 está listo para cuando eso se resuelva.
 
 ## Fase 2 — Funcionalidad completa
 
@@ -55,7 +57,15 @@ Checklist de avance por fase. Se actualiza en cada sesión (ver `CLAUDE.md` secc
 - [x] Middleware de manejo de errores centralizado
 - [x] Unit tests en lógica de negocio crítica (alertas, `AlertEvaluator`)
 - [x] Integration tests en endpoints principales
-- [ ] README profesional (problema, capturas, stack, instrucciones locales, diagrama Mermaid, decisiones técnicas, roadmap)
-- [ ] Diseño responsive (especial cuidado en dashboard móvil) — no verificado en viewport móvil todavía
-- [ ] Accesibilidad básica (contraste, labels, navegación por teclado) — labels/htmlFor sí, resto sin auditar
+- [x] README profesional (problema, capturas reales de la app corriendo, stack, diagrama Mermaid,
+      decisiones técnicas, roadmap) — capturas tomadas con Playwright headless contra el stack
+      dockerizado real, no maquetas.
+- [x] Diseño responsive (especial cuidado en dashboard móvil) — verificado con capturas reales en
+      viewport 390px (no solo revisión de código). Encontró y corrigió un desborde horizontal real
+      en el header (`AuthenticatedLayout`) que cortaba el nombre de usuario y el botón de cerrar
+      sesión; tablas envueltas en `overflow-x-auto`. Ver `CLAUDE.md` §7.
+- [x] Accesibilidad básica (contraste, labels, navegación por teclado) — auditado con `axe-core`
+      contra las 5 pantallas principales (no solo revisión visual): 0 violaciones tras corregir
+      3 hallazgos reales (contraste insuficiente en `sky-600`, falta de landmark `<main>` en login,
+      `<select>` de cambio de estado sin nombre accesible). Ver `CLAUDE.md` §7.
 - [x] CI en GitHub Actions corriendo lint + tests en cada push/PR

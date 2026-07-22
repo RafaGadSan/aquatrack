@@ -28,26 +28,28 @@ export function ThresholdsPage() {
       {thresholds && thresholds.length === 0 && <p className="text-sm text-slate-500">No thresholds configured yet.</p>}
 
       {thresholds && thresholds.length > 0 && (
-        <table className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-2">Parameter</th>
-              <th className="px-4 py-2">Range</th>
-              <th className="px-4 py-2">Scope</th>
-            </tr>
-          </thead>
-          <tbody>
-            {thresholds.map((threshold) => (
-              <tr key={threshold.id} className="border-t border-slate-100">
-                <td className="px-4 py-2 font-medium text-slate-800">{ENVIRONMENTAL_PARAMETER_LABELS[threshold.parameter]}</td>
-                <td className="px-4 py-2 text-slate-600">
-                  {threshold.minValue} – {threshold.maxValue}
-                </td>
-                <td className="px-4 py-2 text-slate-600">{facilityName(threshold.facilityId)}</td>
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-2">Parameter</th>
+                <th className="px-4 py-2">Range</th>
+                <th className="px-4 py-2">Scope</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {thresholds.map((threshold) => (
+                <tr key={threshold.id} className="border-t border-slate-100">
+                  <td className="px-4 py-2 font-medium text-slate-800">{ENVIRONMENTAL_PARAMETER_LABELS[threshold.parameter]}</td>
+                  <td className="px-4 py-2 text-slate-600">
+                    {threshold.minValue} – {threshold.maxValue}
+                  </td>
+                  <td className="px-4 py-2 text-slate-600">{facilityName(threshold.facilityId)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )

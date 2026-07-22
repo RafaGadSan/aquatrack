@@ -14,7 +14,7 @@ export function FacilityDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/facilities" className="text-sm text-sky-600 hover:underline">
+        <Link to="/facilities" className="text-sm text-sky-700 hover:underline">
           ← Back to facilities
         </Link>
         <h1 className="mt-1 text-xl font-semibold text-slate-800">{facility.name}</h1>

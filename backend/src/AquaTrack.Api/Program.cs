@@ -47,6 +47,20 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Without this, every request from the frontend (a different origin — localhost:5173 vs this API's
+// localhost:5000) is silently blocked by the browser before it even reaches the controllers. curl
+// and integration tests don't enforce CORS, so this gap went unnoticed until a real headless-browser
+// check surfaced "net::ERR_FAILED" on login. Single configurable origin is enough for this project's
+// shape (one frontend deployment); revisit if that ever needs to be a list.
+var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:5173";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+        policy.WithOrigins(allowedOrigin)
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer();
@@ -97,6 +111,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("Frontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

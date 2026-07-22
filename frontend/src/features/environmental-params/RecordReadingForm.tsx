@@ -106,7 +106,7 @@ export function RecordReadingForm({ facilityId }: { facilityId: string }) {
         <button
           type="submit"
           disabled={recordReading.isPending}
-          className="rounded-md bg-sky-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+          className="rounded-md bg-sky-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-50"
         >
           {recordReading.isPending ? 'Recording…' : 'Record'}
         </button>

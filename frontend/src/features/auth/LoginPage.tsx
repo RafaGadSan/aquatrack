@@ -29,7 +29,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50">
       <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow-sm">
         <h1 className="mb-1 text-2xl font-semibold text-slate-800">AquaTrack</h1>
         <p className="mb-6 text-sm text-slate-500">Sign in to manage your facilities.</p>
@@ -70,12 +70,12 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+            className="w-full rounded-md bg-sky-700 px-4 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:opacity-50"
           >
             {isSubmitting ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
       </div>
-    </div>
+    </main>
   )
 }
