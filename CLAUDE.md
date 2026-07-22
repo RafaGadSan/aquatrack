@@ -444,6 +444,14 @@ docker compose down
     duplicado) y con Playwright disparando el error real de "instalación duplicada" desde el
     formulario de verdad, confirmando que el mensaje llega intacto hasta el banner de error del
     frontend.
+  - Al redesplegar el backend a Render para llevar esto a producción, el trigger de deploy por API
+    devolvía `500 internal server error` sin más detalle. Causa real: el servicio de Render seguía
+    apuntando a la rama `worktree-frontend-auth-slice` (la del PR #1), que se borró — local y
+    remota — al mergear ese PR (ver entrada de esa sesión). Render nunca avisó de esto en el
+    dashboard, solo fallaba al intentar un deploy nuevo. Corregido apuntando el servicio a
+    `worktree-i18n-spanish-ui` (la rama del PR #2 actual) vía `PATCH /v1/services/{id}` con
+    `{"branch": "..."}`. **Lección:** si se borra una rama que un servicio de Render/Vercel tenía
+    configurada, hay que actualizar la config del servicio a mano — no se detecta ni se avisa solo.
 
 ## 8. Estado actual
 
