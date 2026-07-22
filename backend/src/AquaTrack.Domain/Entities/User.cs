@@ -20,11 +20,11 @@ public class User : Entity
     public User(string email, string passwordHash, string fullName, Role role)
     {
         if (string.IsNullOrWhiteSpace(email))
-            throw new DomainException("Email is required.");
+            throw new DomainException("El correo electrónico es obligatorio.");
         if (string.IsNullOrWhiteSpace(passwordHash))
-            throw new DomainException("Password hash is required.");
+            throw new DomainException("El hash de la contraseña es obligatorio.");
         if (string.IsNullOrWhiteSpace(fullName))
-            throw new DomainException("Full name is required.");
+            throw new DomainException("El nombre completo es obligatorio.");
 
         Email = email.Trim().ToLowerInvariant();
         PasswordHash = passwordHash;

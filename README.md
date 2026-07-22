@@ -14,8 +14,9 @@ design decision that mattered written down as it was made (see `CLAUDE.md`).
 Vercel, backend on Render, database on Neon. Demo credentials are intentionally public (see below);
 this is a portfolio piece meant to be explored, not a real operations tool with real data behind it.
 
-The UI is in Spanish (the language of the operators this tool is modeled on); this README stays in
-English for broader reach. Code, comments, and API stay in English throughout.
+The UI — including the API's human-readable error messages — is in Spanish (the language of the
+operators this tool is modeled on); this README stays in English for broader reach. Code, comments,
+and the API's data contract (JSON field names, enum values) stay in English throughout.
 
 ## Why this exists
 
@@ -165,6 +166,12 @@ The full log — every decision, with the reasoning and the date — lives in `C
   `*_LABELS` map (e.g. `FACILITY_STATUS_LABELS`) next to its type definition translating it for
   display, so the wire contract and variable/function names stay in English while nothing
   user-facing does.
+- **The API's error messages are Spanish too, and pinned explicitly rather than auto-detected**:
+  FluentValidation's `LanguageManager.Culture` is set to `new CultureInfo("es")` instead of relying
+  on the host OS locale — deliberately, since an earlier bug (see `CLAUDE.md` §7) was caused by
+  exactly that kind of implicit, environment-dependent behavior. `DomainException` and
+  `Result.Failure` messages (business rule violations, not framework validation) are translated
+  directly since they're plain C# string literals.
 
 ## Roadmap
 

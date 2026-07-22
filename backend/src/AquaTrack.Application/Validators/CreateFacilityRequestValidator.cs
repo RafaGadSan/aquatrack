@@ -7,8 +7,8 @@ public class CreateFacilityRequestValidator : AbstractValidator<CreateFacilityRe
 {
     public CreateFacilityRequestValidator()
     {
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Type).IsInEnum();
-        RuleFor(x => x.Location).MaximumLength(200);
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200).WithName("Nombre");
+        RuleFor(x => x.Type).IsInEnum().WithName("Tipo");
+        RuleFor(x => x.Location).MaximumLength(200).WithName("Ubicación");
     }
 }

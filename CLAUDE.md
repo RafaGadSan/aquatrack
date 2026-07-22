@@ -394,12 +394,10 @@ docker compose down
     solo vive como variable de entorno en Render.
 - **2026-07-22** — **UI del frontend traducida al español**, a pedido explícito de Rafael. Alcance:
   todo el texto visible (labels, botones, mensajes de carga/error, encabezados de tabla) en los
-  componentes React. **No** se tradujo: código (nombres de variables/funciones/componentes,
-  comentarios — sigue la convención de §4), ni los mensajes que devuelve el backend (FluentValidation,
-  `DomainException`, `Result.Failure`) — esos siguen en inglés y pueden aparecer mezclados con la UI
-  en español si el backend rechaza algo con su propio mensaje (ej. "A facility named 'X' already
-  exists."). Traducir mensajes del backend queda pendiente como posible follow-up si llega a notarse
-  como un problema real, no se asumió como parte de este pedido.
+  componentes React. **No** se tradujo el código (nombres de variables/funciones/componentes,
+  comentarios — sigue la convención de §4). En su momento los mensajes que devuelve el backend
+  (FluentValidation, `DomainException`, `Result.Failure`) quedaron sin traducir — ver la entrada
+  posterior en esta misma sección, donde Rafael pidió explícitamente cerrar ese hueco y quedó hecho.
   - Los valores de los enums que vienen de la API (`FacilityStatus`, `FacilityType`, `Role`,
     `AlertStatus`, `EnvironmentalParameter`) **no cambiaron** — siguen siendo `'Active'`, `'Admin'`,
     etc., tal como los espera/devuelve el backend. Cada tipo tiene un mapa `*_LABELS` al lado de su
@@ -424,6 +422,28 @@ docker compose down
     (`vite: command not found`, exit 127). Corregido seteando `rootDirectory` vía la API de Vercel
     (`PATCH /v9/projects/aquatrack-frontend`) — queda arreglado para cualquier PR futuro, no solo
     para este.
+- **2026-07-22** — **Mensajes del backend traducidos al español**, a pedido explícito de Rafael tras
+  la traducción del frontend (quedaban en inglés y podían aparecer mezclados con la UI en español).
+  Cubre las tres fuentes de mensajes que le llegan al cliente:
+  - **FluentValidation**: en vez de `ValidatorOptions.Global.LanguageManager.Enabled = false`
+    (forzaba inglés para no depender del locale del SO — ver entrada de sesión anterior), ahora
+    `Enabled = true` + `Culture = new CultureInfo("es")` — **explícito**, no auto-detectado, así que
+    mantiene la misma garantía de determinismo que tenía la versión anterior (no depende del locale
+    del SO) pero en español en vez de en inglés. Cada `RuleFor` que antes mostraba el nombre de la
+    propiedad en inglés (ej. `'PH' must be between 0 and 14.`) ahora tiene `.WithName("...")` en
+    español — verificado con `curl` que `.WithName()` se aplica a toda la cadena de validadores de
+    esa propiedad, no solo al último.
+  - **`DomainException`** (invariantes de las entidades) y **`Result.Failure`** (fallos de negocio
+    en los servicios de Application, ej. "instalación no encontrada", "ya existe una instalación
+    llamada X") — traducidos directamente, son literales de C#.
+  - Mensaje genérico de error 500 en `ExceptionHandlingMiddleware`.
+  - **Ningún test dependía del texto exacto de estos mensajes** (solo de `IsSuccess`/status codes),
+    así que no hubo que tocar ningún test backend — buen diseño de tests previo, no suerte.
+  - Verificado con `curl` contra el backend real para cada una de las tres fuentes (NotEmpty,
+    InclusiveBetween, GreaterThanOrEqualTo, `Result.Failure` de login inválido y de nombre
+    duplicado) y con Playwright disparando el error real de "instalación duplicada" desde el
+    formulario de verdad, confirmando que el mensaje llega intacto hasta el banner de error del
+    frontend.
 
 ## 8. Estado actual
 

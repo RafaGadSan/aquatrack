@@ -36,7 +36,7 @@ public class EnvironmentalReadingService : IEnvironmentalReadingService
     {
         if (await _facilityRepository.GetByIdAsync(facilityId, cancellationToken) is null)
         {
-            return Result<RecordReadingResult>.Failure("Facility not found.");
+            return Result<RecordReadingResult>.Failure("Instalación no encontrada.");
         }
 
         var reading = new EnvironmentalReading(
@@ -66,7 +66,7 @@ public class EnvironmentalReadingService : IEnvironmentalReadingService
     {
         if (await _facilityRepository.GetByIdAsync(facilityId, cancellationToken) is null)
         {
-            return Result<IReadOnlyList<EnvironmentalReadingResponse>>.Failure("Facility not found.");
+            return Result<IReadOnlyList<EnvironmentalReadingResponse>>.Failure("Instalación no encontrada.");
         }
 
         var readings = await _readingRepository.GetByFacilityIdAsync(facilityId, cancellationToken);

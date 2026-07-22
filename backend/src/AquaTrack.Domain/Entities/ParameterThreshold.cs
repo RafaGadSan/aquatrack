@@ -24,7 +24,7 @@ public class ParameterThreshold : Entity
     public ParameterThreshold(EnvironmentalParameter parameter, decimal minValue, decimal maxValue, Guid? facilityId = null)
     {
         if (minValue > maxValue)
-            throw new DomainException("Minimum value cannot be greater than maximum value.");
+            throw new DomainException("El valor mínimo no puede ser mayor que el valor máximo.");
 
         Parameter = parameter;
         MinValue = minValue;
@@ -41,7 +41,7 @@ public class ParameterThreshold : Entity
     public void UpdateRange(decimal minValue, decimal maxValue)
     {
         if (minValue > maxValue)
-            throw new DomainException("Minimum value cannot be greater than maximum value.");
+            throw new DomainException("El valor mínimo no puede ser mayor que el valor máximo.");
 
         MinValue = minValue;
         MaxValue = maxValue;

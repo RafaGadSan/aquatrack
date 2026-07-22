@@ -7,8 +7,8 @@ public class CreateParameterThresholdRequestValidator : AbstractValidator<Create
 {
     public CreateParameterThresholdRequestValidator()
     {
-        RuleFor(x => x.Parameter).IsInEnum();
+        RuleFor(x => x.Parameter).IsInEnum().WithName("Parámetro");
         RuleFor(x => x.MaxValue).GreaterThanOrEqualTo(x => x.MinValue)
-            .WithMessage("MaxValue must be greater than or equal to MinValue.");
+            .WithMessage("El valor máximo debe ser mayor o igual al valor mínimo.");
     }
 }

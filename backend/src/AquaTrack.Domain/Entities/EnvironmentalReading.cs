@@ -29,15 +29,15 @@ public class EnvironmentalReading : Entity
         decimal ph)
     {
         if (facilityId == Guid.Empty)
-            throw new DomainException("A reading must belong to a facility.");
+            throw new DomainException("Una lectura debe pertenecer a una instalación.");
         if (recordedByUserId == Guid.Empty)
-            throw new DomainException("A reading must be attributed to a user.");
+            throw new DomainException("Una lectura debe estar atribuida a un usuario.");
         if (dissolvedOxygen < 0)
-            throw new DomainException("Dissolved oxygen cannot be negative.");
+            throw new DomainException("El oxígeno disuelto no puede ser negativo.");
         if (salinity < 0)
-            throw new DomainException("Salinity cannot be negative.");
+            throw new DomainException("La salinidad no puede ser negativa.");
         if (ph is < 0 or > 14)
-            throw new DomainException("pH must be between 0 and 14.");
+            throw new DomainException("El pH debe estar entre 0 y 14.");
 
         FacilityId = facilityId;
         RecordedByUserId = recordedByUserId;

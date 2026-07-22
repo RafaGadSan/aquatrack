@@ -20,7 +20,7 @@ public class FacilityService : IFacilityService
     {
         if (await _facilityRepository.ExistsByNameAsync(request.Name, cancellationToken))
         {
-            return Result<FacilityResponse>.Failure($"A facility named '{request.Name}' already exists.");
+            return Result<FacilityResponse>.Failure($"Ya existe una instalación llamada '{request.Name}'.");
         }
 
         var facility = new Facility(request.Name, request.Type, request.Location);
@@ -40,7 +40,7 @@ public class FacilityService : IFacilityService
     {
         var facility = await _facilityRepository.GetByIdAsync(id, cancellationToken);
         return facility is null
-            ? Result<FacilityResponse>.Failure("Facility not found.")
+            ? Result<FacilityResponse>.Failure("Instalación no encontrada.")
             : Result<FacilityResponse>.Success(ToResponse(facility));
     }
 
@@ -49,7 +49,7 @@ public class FacilityService : IFacilityService
         var facility = await _facilityRepository.GetByIdAsync(id, cancellationToken);
         if (facility is null)
         {
-            return Result<FacilityResponse>.Failure("Facility not found.");
+            return Result<FacilityResponse>.Failure("Instalación no encontrada.");
         }
 
         facility.ChangeStatus(request.Status);
