@@ -363,21 +363,50 @@ docker compose down
   - Ninguno de estos dos problemas era visible leyendo el código o los tests — ambos necesitaban una
     verificación *renderizada* (visual para responsive, con `axe-core` para accesibilidad) contra la
     app real corriendo.
+- **2026-07-22** — **Despliegue inicial en vivo**: frontend en Vercel
+  (https://aquatrack-frontend-iota.vercel.app), backend en Render, base de datos en Neon Postgres —
+  el stack exacto que ya estaba decidido en §2. Rafael proveyó las cuentas/credenciales (token de
+  Vercel, connection string de Neon, API key de Render) directamente en el chat de esta sesión; no
+  se guardaron en ningún archivo del repo ni se commitearon — solo se usaron como variables de
+  entorno puntuales en los comandos de deploy, y las de Render/Vercel quedaron guardadas del lado de
+  esas plataformas (no en este repo).
+  - **Credenciales demo públicas, a propósito**: `admin@aquatrack.dev`/`Admin123!` (y las otras dos)
+    están en el código fuente (`DbInitializer.cs`) y ahora también en el README — decisión consciente
+    de Rafael para que cualquiera que revise el portfolio pueda loguearse sin pedir acceso. Implica
+    que cualquier visitante puede actuar como Admin sobre la base de datos pública (crear/editar
+    instalaciones, umbrales, etc.) — aceptable porque son datos ficticios, sin PII ni información de
+    negocio real. Sembrada con el mismo set de datos demo usado para las capturas del README (3
+    instalaciones, 2 umbrales globales, una alerta activa) para que la demo no se vea vacía al entrar.
+  - **Bug real encontrado al verificar el deploy con un navegador real**: Nginx (usado en
+    `docker compose`) ya tenía fallback SPA (`try_files ... /index.html`) para que las rutas de React
+    Router funcionaran; **Vercel no lo tiene por defecto** — sin `frontend/vercel.json`
+    (`rewrites: [{source: "/(.*)", destination: "/index.html"}]`), cualquier ruta que no fuera `/`
+    devolvía 404 real en producción. Encontrado con el mismo navegador headless (Playwright) usado
+    para el resto del pulido de esta sesión, apuntado a la URL pública en vez de a Docker local —
+    otra vez: `curl` a la raíz (`/`) daba 200 y no lo hubiera detectado.
+  - Orden de deploy real: 1) backend a Render con el connection string de Neon (las migraciones y el
+    seed corren solos al arrancar, mismo mecanismo que en Docker — ver entrada de Program.cs en esta
+    sección) — 2) frontend a Vercel con `VITE_API_URL` apuntando a la URL de Render — 3) volver a
+    Render para setear `Cors__AllowedOrigin` con la URL final de Vercel (no se puede saber antes de
+    que Vercel asigne el dominio) y redeployar. Sin este último paso, el deploy en vivo tendría el
+    mismo bug de CORS que se encontró y arregló en local.
+  - JWT secret de producción generado nuevo (no reutilizado del `.env` local) — 64 bytes aleatorios,
+    solo vive como variable de entorno en Render.
 
 ## 8. Estado actual
 
 **Última sesión:** 2026-07-22
 
-**Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Todo el checklist funcional de
-Fase 1 MVP está hecho, backend y frontend por igual**: dominio, Auth (login), CRUD de `Facility`,
-registro de parámetros ambientales, alertas automáticas y Dashboard — ver `PROGRESS.md`. El pulido de
-Fase 1 (README, responsive, accesibilidad) también está hecho — solo queda el despliegue, que
-necesita cuentas de cloud reales. La app se verificó por primera vez esta sesión contra un **navegador
-real** (Playwright headless, no solo `curl`), lo que encontró y corrigió un bug que llevaba desde el
-principio del frontend sin detectarse: **CORS no estaba configurado**, así que la app nunca había
-funcionado realmente en un navegador (ver §7). El detalle línea a línea de qué se tocó en cada sesión
-vive en el historial de git (`git log --oneline`), no hace falta repetirlo aquí — esta sección solo
-recoge el estado y lo que no es obvio a partir del código.
+**Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Fase 1 MVP está terminada por
+completo**: funcionalidad (backend + frontend), pulido (README, responsive, accesibilidad) y
+**desplegada en vivo** — https://aquatrack-frontend-iota.vercel.app — ver `PROGRESS.md`. La app se
+verificó por primera vez esta sesión contra un **navegador real** (Playwright headless, no solo
+`curl`), tanto en local como contra las URLs públicas ya desplegadas, lo que encontró y corrigió dos
+bugs reales que ningún test anterior había detectado: **CORS no estaba configurado** (la app nunca
+había funcionado en un navegador real desde que existe frontend) y **Vercel no tenía fallback SPA**
+(cualquier ruta que no fuera `/` daba 404 en producción) — ver §7 para ambos. El detalle línea a
+línea de qué se tocó en cada sesión vive en el historial de git (`git log --oneline`), no hace falta
+repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a partir del código.
 
 **Hecho hasta ahora (por área):**
 - **Repo y CI:** repo público en https://github.com/RafaGadSan/aquatrack, monorepo, `.gitignore`,
@@ -466,13 +495,17 @@ recoge el estado y lo que no es obvio a partir del código.
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Rafael le da un vistazo manual de todos modos — esta sesión verificó con un navegador automatizado
-   (Playwright headless: login, las 5 pantallas, mobile, `axe-core`), pero eso no reemplaza un ojo
-   humano real, sobre todo para cosas de gusto/detalle visual que un test no juzga.
-2. Fase 1 está completa (funcionalidad + pulido). Queda decidir: (a) saltar a Fase 2
-   (turnos/personal, incidencias, alimentación, trazabilidad de lote), o (b) el despliegue inicial
-   (backend/frontend/DB), que necesita cuentas de cloud reales que esta sesión no tiene — ver
-   `PROGRESS.md`.
+1. Rafael le da un vistazo manual de todos modos, tanto al PR sin mergear como a la app ya
+   desplegada en vivo — esta sesión verificó con un navegador automatizado (Playwright headless:
+   login, las 5 pantallas, mobile, `axe-core`, y luego contra las URLs públicas reales), pero eso no
+   reemplaza un ojo humano real, sobre todo para cosas de gusto/detalle visual que un test no juzga.
+2. Mergear el PR #1 a `main` en algún momento — el deploy en vivo se hizo desde la rama del PR
+   (tenía todo el frontend), así que `main` todavía no refleja el estado desplegado. No bloqueante
+   para seguir trabajando, pero sí para que el repo y lo que está en producción cuenten la misma
+   historia.
+3. Fase 1 está completa de punta a punta (funcionalidad, pulido, despliegue). Queda decidir: saltar
+   a Fase 2 (turnos/personal, incidencias, alimentación, trazabilidad de lote), o los stretch goals
+   de Fase 3.
 
 **Bloqueos/problemas conocidos:** ninguno. Ver §7 para varios gotchas de entorno ya resueltos y
 documentados (puerto de Postgres, longitud mínima del secreto JWT, timing de `IOptions`) para que no

@@ -8,6 +8,12 @@ A portfolio project, not a production app — but built and verified like one: r
 against a real Postgres instance, a real (headless) browser check before every merge, and every
 design decision that mattered written down as it was made (see `CLAUDE.md`).
 
+## Live demo
+
+**[aquatrack-frontend-iota.vercel.app](https://aquatrack-frontend-iota.vercel.app)** — frontend on
+Vercel, backend on Render, database on Neon. Demo credentials are intentionally public (see below);
+this is a portfolio piece meant to be explored, not a real operations tool with real data behind it.
+
 ## Why this exists
 
 Three years running weekend shifts and covering as deputy operations lead at an aquaculture site —
@@ -146,15 +152,18 @@ The full log — every decision, with the reasoning and the date — lives in `C
   can't: a `PH` property serializing as `"ph"` (`System.Text.Json`'s camelCase policy collapsing a
   two-letter acronym), the missing CORS policy above, and a color-contrast/missing-landmark pass
   with `axe-core` that a code read alone wouldn't have surfaced.
+- **The same discipline applied to the live deployment**: Docker's Nginx config had an SPA fallback
+  (unknown paths → `index.html`, so client-side routes work); Vercel needed its own equivalent
+  (`frontend/vercel.json`) — without it, every route but `/` 404'd on the real deployed URL. Found
+  by hitting the live site with a headless browser after deploying, not assumed to "just work"
+  because it worked in Docker.
 
 ## Roadmap
 
-Fase 1 (MVP) is functionally complete, backend and frontend alike — see `PROGRESS.md` for the full
+Fase 1 (MVP) is complete — functionally, visually, and deployed. See `PROGRESS.md` for the full
 phase-by-phase checklist. What's next:
 
 - **Fase 2**: shift/staff management, incident tracking, feeding logs, full batch traceability
   (seed → harvest).
-- **Deployment**: backend → Railway/Render, frontend → Vercel, database → Neon/Supabase (not done
-  yet — needs real cloud accounts this session didn't have access to).
 - **Fase 3 (stretch)**: PDF report export, simulated real-time sensor data over WebSockets, email
   alerts on critical breaches, a public demo mode.

@@ -29,9 +29,11 @@ Checklist de avance por fase. Se actualiza en cada sesión (ver `CLAUDE.md` secc
       (instalaciones por estado, alertas activas con nombre de instalación resuelto) + frontend en `/`
       (nueva página de inicio; Facilities se movió a `/facilities`).
 - [x] Seed data con datos de ejemplo realistas (3 usuarios demo, uno por rol — se irá ampliando por slice)
-- [ ] Despliegue inicial (backend + frontend + DB) con datos de ejemplo — requiere cuentas reales en
-      Railway/Render/Vercel/Neon (ver stack en §2 de `CLAUDE.md`) que esta sesión no tiene; el resto
-      de Fase 1 está listo para cuando eso se resuelva.
+- [x] Despliegue inicial (backend + frontend + DB) con datos de ejemplo — **live:**
+      https://aquatrack-frontend-iota.vercel.app (frontend en Vercel, backend en Render, DB en Neon).
+      Credenciales demo públicas a propósito (ver `CLAUDE.md` §7). Verificado con navegador real
+      contra las URLs públicas, no solo `curl` — encontró y corrigió un bug real de routing (SPA
+      fallback faltante en Vercel, ver `CLAUDE.md` §7).
 
 ## Fase 2 — Funcionalidad completa
 
