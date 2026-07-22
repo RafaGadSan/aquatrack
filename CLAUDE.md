@@ -317,18 +317,32 @@ docker compose down
   la instalación. Verificado con un test que falla con la key vieja y pasa con la nueva
   (`queryKeyIsolation.test.tsx`) — no alcanza con "se ve razonable", los invariantes de invalidación
   de cache hay que probarlos.
+- **2026-07-22** — Dashboard (cierra el checklist funcional de Fase 1). Backend:
+  `GET /api/dashboard/summary` (`DashboardController`/`DashboardService`), cualquier rol autenticado
+  — devuelve conteo de instalaciones por estado y las alertas activas de **todas** las instalaciones
+  con el nombre de la instalación ya resuelto (`DashboardAlertResponse.FacilityName`), para que el
+  frontend no tenga que hacer N llamadas extra. Requirió un método nuevo,
+  `IAlertRepository.GetActiveAsync()` (antes solo existía `GetByFacilityIdAsync`, que filtra por una
+  instalación). Frontend: el Dashboard pasa a ser la ruta índice (`/`) — más natural como pantalla de
+  aterrizaje que la lista de instalaciones — y `Facilities` se mueve a `/facilities` explícito; se
+  agregó navegación real (`AuthenticatedLayout`) para las tres secciones. Estadísticas como stat
+  tiles simples (sin gráficos: son 3-4 categorías en una foto del momento, no series temporales —
+  ver skill `dataviz`, "a veces la respuesta no es un gráfico"); reutiliza los colores de estado que
+  ya usaba `FacilitiesPage`/`AlertsList`, sin introducir una paleta nueva. Verificado extremo a
+  extremo con `docker compose` + `curl` (umbral→lectura→alerta→dashboard) antes de tocar el frontend,
+  seguido del mismo patrón de esta sesión.
 
 ## 8. Estado actual
 
 **Última sesión:** 2026-07-22
 
 **Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Todo el checklist funcional de
-Fase 1 MVP del backend está hecho**: dominio, Auth (login), CRUD de `Facility`, registro de
-parámetros ambientales y alertas automáticas. El frontend ya no está desconectado:
-**funcionalmente ya cubre todo lo que el backend expone** (login, facilities, readings, alerts,
-thresholds). Solo falta el dashboard (backend + frontend, aún no empezado). El detalle línea a línea
-de qué se tocó en cada sesión vive en el historial de git (`git log --oneline`), no hace falta
-repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a partir del código.
+Fase 1 MVP está hecho, backend y frontend por igual**: dominio, Auth (login), CRUD de `Facility`,
+registro de parámetros ambientales, alertas automáticas y Dashboard — ver `PROGRESS.md`. Lo único que
+queda de Fase 1 es "pulido" (README profesional, responsive, accesibilidad, despliegue), no
+funcionalidad. El detalle línea a línea de qué se tocó en cada sesión vive en el historial de git
+(`git log --oneline`), no hace falta repetirlo aquí — esta sección solo recoge el estado y lo que no
+es obvio a partir del código.
 
 **Hecho hasta ahora (por área):**
 - **Repo y CI:** repo público en https://github.com/RafaGadSan/aquatrack, monorepo, `.gitignore`,
@@ -363,9 +377,13 @@ repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a p
   Esta verificación encontró y corrigió un bug real antes de mergear — ver la entrada sobre `ph` en
   minúsculas en §7. Sin verificación interactiva en navegador (misma limitación que las rebanadas
   anteriores).
-- **Frontend — pendiente:** solo el dashboard (backend + frontend) no tiene pantalla ni endpoint
-  todavía. Scaffold base: Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack Query +
-  Recharts + Vitest.
+- **Frontend — Dashboard (cuarta rebanada real, nueva ruta índice `/`):** stat tiles (instalaciones
+  por estado, total, alertas activas) y lista de alertas activas de todas las instalaciones con link
+  a cada una (`features/dashboard/DashboardPage.tsx`) contra `GET /api/dashboard/summary`. `Facilities`
+  se movió a `/facilities` explícito; navegación real en `AuthenticatedLayout` (Dashboard/Facilities/
+  Thresholds). Ver §7 para la decisión de stat tiles en vez de gráficos. Con esto el frontend
+  funcionalmente ya no tiene nada pendiente de Fase 1 por conectar.
+- **Backend — Dashboard:** `GET /api/dashboard/summary` (cualquier rol autenticado) — ver §7.
 - **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
   `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). Ver §7 para las
   decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
@@ -383,33 +401,33 @@ repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a p
   hace en la operación real); solo Admin configura umbrales.
 - **Persistencia:** `AquaTrackDbContext` mapea las 5 entidades de dominio (3 migraciones:
   `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
-- **Tests backend:** 68 en total (30 Domain + 23 Application + 15 Api.IntegrationTests), todos en
+- **Tests backend:** 73 en total (30 Domain + 26 Application + 17 Api.IntegrationTests), todos en
   verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
-- **Tests frontend:** 15 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
+- **Tests frontend:** 17 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
   (login), `features/facilities/FacilitiesPage.test.tsx` (permisos por rol),
   `features/environmental-params/RecordReadingForm.test.tsx` +
   `features/environmental-params/ThresholdsPage.test.tsx` (alertas disparadas en la respuesta,
   permisos por rol), `features/facilities/FacilityDetailPage.test.tsx` (regresión: el banner de
-  alertas no debe persistir al navegar a otra instalación ya cacheada) y
+  alertas no debe persistir al navegar a otra instalación ya cacheada),
   `features/environmental-params/queryKeyIsolation.test.tsx` (regresión: crear una instalación no
-  debe refetchear las lecturas de otra — ver §7 para ambos hallazgos), con `httpClient`
-  mockeado en todos.
-- Las tres rebanadas de backend (Auth, Facility, EnvironmentalReading) se verificaron no solo con
-  `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`) hablando con
-  Postgres real — incluyendo el flujo completo umbral→lectura→alerta. Lo mismo del lado frontend,
-  contra ese mismo backend real (ver entradas de arriba).
+  debe refetchear las lecturas de otra — ver §7 para ambos hallazgos), y
+  `features/dashboard/DashboardPage.test.tsx` (conteos, link de cada alerta a su instalación, estado
+  vacío), con `httpClient` mockeado en todos.
+- Las cuatro rebanadas de backend (Auth, Facility, EnvironmentalReading, Dashboard) se verificaron no
+  solo con `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`)
+  hablando con Postgres real — incluyendo el flujo completo umbral→lectura→alerta→dashboard. Lo mismo
+  del lado frontend, contra ese mismo backend real (ver entradas de arriba).
 
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Rafael revisa toda la app en un navegador real (login, facilities, readings/alerts, thresholds) —
-   esta sesión no pudo, sin herramienta de automatización de navegador disponible; todo lo demás sí
-   se verificó contra el backend real vía `curl`/`docker compose`.
-2. Decidir Dashboard (Fase 1, backend: endpoint de resumen/métricas + frontend) vs. saltar a Fase 2
-   (turnos/personal, incidencias, alimentación, trazabilidad de lote) — con esto el frontend ya
-   cubre funcionalmente todo lo que el backend expone hoy.
-3. Cuando esas pantallas existan: decidir Dashboard (Fase 1) vs. saltar a Fase 2
-   (turnos/personal, incidencias, alimentación, trazabilidad de lote).
+1. Rafael revisa toda la app en un navegador real (login, dashboard, facilities, readings/alerts,
+   thresholds) — esta sesión no pudo, sin herramienta de automatización de navegador disponible; todo
+   lo demás sí se verificó contra el backend real vía `curl`/`docker compose`. Pendiente, no bloqueante.
+2. Con Fase 1 funcionalmente completa (backend + frontend), decidir: (a) saltar a Fase 2
+   (turnos/personal, incidencias, alimentación, trazabilidad de lote), o (b) el pulido que quedó
+   pendiente de Fase 1 (README profesional, responsive, accesibilidad, despliegue — ver
+   `PROGRESS.md`).
 
 **Bloqueos/problemas conocidos:** ninguno. Ver §7 para varios gotchas de entorno ya resueltos y
 documentados (puerto de Postgres, longitud mínima del secreto JWT, timing de `IOptions`) para que no

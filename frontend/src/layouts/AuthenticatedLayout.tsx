@@ -14,6 +14,9 @@ export function AuthenticatedLayout() {
           <span className="text-lg font-semibold text-slate-800">AquaTrack</span>
           <nav className="flex items-center gap-1 text-sm">
             <NavLink to="/" end className={navLinkClassName}>
+              Dashboard
+            </NavLink>
+            <NavLink to="/facilities" className={navLinkClassName}>
               Facilities
             </NavLink>
             <NavLink to="/thresholds" className={navLinkClassName}>

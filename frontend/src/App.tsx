@@ -7,6 +7,7 @@ import { ProtectedRoute } from './routes/ProtectedRoute'
 import { FacilitiesPage } from './features/facilities/FacilitiesPage'
 import { FacilityDetailPage } from './features/facilities/FacilityDetailPage'
 import { ThresholdsPage } from './features/environmental-params/ThresholdsPage'
+import { DashboardPage } from './features/dashboard/DashboardPage'
 
 const queryClient = new QueryClient()
 
@@ -19,7 +20,8 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AuthenticatedLayout />}>
-                <Route path="/" element={<FacilitiesPage />} />
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/facilities" element={<FacilitiesPage />} />
                 <Route path="/facilities/:id" element={<FacilityDetailPage />} />
                 <Route path="/thresholds" element={<ThresholdsPage />} />
               </Route>

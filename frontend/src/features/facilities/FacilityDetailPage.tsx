@@ -14,7 +14,7 @@ export function FacilityDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/" className="text-sm text-sky-600 hover:underline">
+        <Link to="/facilities" className="text-sm text-sky-600 hover:underline">
           ← Back to facilities
         </Link>
         <h1 className="mt-1 text-xl font-semibold text-slate-800">{facility.name}</h1>
@@ -23,9 +23,6 @@ export function FacilityDetailPage() {
         </p>
       </div>
 
-      {/* Keyed on facility.id: without it, navigating between two facility detail pages (e.g. by
-          editing the URL) wouldn't remount this component, leaving the previous facility's
-          triggered-alerts banner and in-progress form values visible on the new one. */}
       {/* Keyed on facility.id: without it, navigating between two facility detail pages (e.g. by
           clicking through to a facility already cached by TanStack Query, which skips the
           isLoading branch above and so doesn't naturally unmount this subtree) leaves the
