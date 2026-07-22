@@ -198,17 +198,18 @@ docker compose down
 - Dos workflows de GitHub Actions (`.github/workflows/backend-ci.yml`,
   `frontend-ci.yml`), cada uno disparado solo por cambios en su carpeta (`paths:`). Backend:
   restore+build+test con .NET 8. Frontend: `npm ci` + lint (oxlint) + `vitest run --passWithNoTests`
-  + build. Todavía no se han empujado a GitHub para ver una ejecución real (no hay remoto
-  configurado en este repo local todavía).
+  + build.
+- **Repo remoto creado y primer push hecho:** https://github.com/RafaGadSan/aquatrack (público,
+  vía `gh repo create --source=. --remote=origin`). Los dos workflows de CI corrieron de verdad
+  contra el push inicial y terminaron en verde (`Backend CI` ~41s, `Frontend CI` ~19s) — confirma
+  que el pipeline no es solo teórico.
 
 **En qué se está trabajando ahora mismo:**
-- Nada en curso. Fase 0 (setup del proyecto) completa según `PROGRESS.md`.
+- Nada en curso. Fase 0 (setup del proyecto) completa según `PROGRESS.md`, incluido el repo remoto.
 
 **Próximos pasos inmediatos:**
 1. Diseñar el modelo de dominio inicial (Fase 1 MVP): entidades `Facility`/lote, `EnvironmentalReading`,
    `Alert`, `User`/roles — antes de escribir el primer DbContext o controller.
 2. Confirmar la decisión pendiente de nombres de roles en inglés (`Admin`/`ShiftLead`/`Operator`) — ver §7.
-3. Crear el repo remoto en GitHub y hacer el primer push para verificar que los workflows de CI
-   corren de verdad (hasta ahora solo se ha validado localmente).
 
 **Bloqueos/problemas conocidos:** ninguno.
