@@ -281,6 +281,22 @@ docker compose down
   instalación duplicado) y `ProblemDetails { title }` para errores de validación/dominio
   (`FluentValidation`/`DomainException`). Reutilizado por login y por el alta de instalaciones;
   cualquier formulario nuevo que llame a la API debería usarlo también.
+- **2026-07-22** — Gotcha real encontrado al verificar contra el backend real (no hipotético): la
+  propiedad C# `PH` de `EnvironmentalReadingResponse` se serializa como `"ph"` (todo minúsculas), no
+  `"pH"` — la política camelCase por defecto de `System.Text.Json` colapsa una sigla de dos letras a
+  una sola minúscula inicial. Los tipos TS (`types/environmentalReading.ts`) y el formulario de
+  registro de lecturas usan `ph`, no `pH`, como nombre de propiedad (la etiqueta visible en la UI sí
+  sigue diciendo "pH"). Si se añade otro campo con sigla en el dominio, verificar la forma real del
+  JSON con `curl` antes de asumir el casing — no fiarse de la intuición aquí.
+- **2026-07-22** — Tercera rebanada de frontend: Environmental readings, alerts y thresholds. Página
+  de detalle de instalación (`/facilities/:id`, `features/facilities/FacilityDetailPage.tsx`) que
+  compone formulario de registro de lectura (`features/environmental-params/`), lista de lecturas
+  recientes y lista de alertas de esa instalación (`features/alerts/`). Las alertas disparadas por
+  una lectura se muestran **inline** justo tras el registro (vienen ya en la respuesta del POST, ver
+  decisión de backend sobre `RecordReadingResult`), sin esperar a un refetch. Pantalla de umbrales
+  (`/thresholds`) con alta restringida a Admin (igual que el patrón de Facilities) pero lectura
+  abierta a cualquier rol. Con más de una pantalla ya tiene sentido una navegación real en
+  `AuthenticatedLayout` (antes solo tenía el header); se añadió con `NavLink`.
 
 ## 8. Estado actual
 
@@ -288,12 +304,11 @@ docker compose down
 
 **Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. **Todo el checklist funcional de
 Fase 1 MVP del backend está hecho**: dominio, Auth (login), CRUD de `Facility`, registro de
-parámetros ambientales y alertas automáticas. El frontend ya no está desconectado: tiene su primera
-rebanada real (login + sesión persistida + rutas protegidas). Queda el dashboard (backend + frontend)
-y conectar el resto de pantallas (facilities, readings, alerts) a lo que el backend ya expone. El
-detalle línea a línea de qué se tocó en cada sesión vive en el historial de git
-(`git log --oneline`), no hace falta repetirlo aquí — esta sección solo recoge el estado y lo que no
-es obvio a partir del código.
+parámetros ambientales y alertas automáticas. El frontend ya no está desconectado:
+**funcionalmente ya cubre todo lo que el backend expone** (login, facilities, readings, alerts,
+thresholds). Solo falta el dashboard (backend + frontend, aún no empezado). El detalle línea a línea
+de qué se tocó en cada sesión vive en el historial de git (`git log --oneline`), no hace falta
+repetirlo aquí — esta sección solo recoge el estado y lo que no es obvio a partir del código.
 
 **Hecho hasta ahora (por área):**
 - **Repo y CI:** repo público en https://github.com/RafaGadSan/aquatrack, monorepo, `.gitignore`,
@@ -319,9 +334,18 @@ es obvio a partir del código.
   Verificado contra el backend real (`docker compose up`): alta, listado, cambio de estado y el
   choque de nombre duplicado (409, forma `{error}`) via `curl`, confirmando que coincide con los
   tipos TS y con `getApiErrorMessage` (ver §7).
-- **Frontend — el resto:** scaffold Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack
-  Query + Recharts + Vitest. Environmental readings/alerts y dashboard aún no tienen pantalla — el
-  backend ya expone esos endpoints (ver más abajo), solo falta consumirlos.
+- **Frontend — Environmental readings/alerts/thresholds (tercera rebanada real):** página de detalle
+  de instalación (`features/facilities/FacilityDetailPage.tsx`, ruta `/facilities/:id`) con
+  formulario de registro de lectura, lista de lecturas recientes y lista de alertas de esa
+  instalación; pantalla de umbrales (`features/environmental-params/ThresholdsPage.tsx`, ruta
+  `/thresholds`) con alta restringida a Admin. Verificado contra el backend real (`docker compose
+  up`): flujo completo umbral→lectura→alerta vía `curl`, incluyendo el caso que dispara la alerta.
+  Esta verificación encontró y corrigió un bug real antes de mergear — ver la entrada sobre `ph` en
+  minúsculas en §7. Sin verificación interactiva en navegador (misma limitación que las rebanadas
+  anteriores).
+- **Frontend — pendiente:** solo el dashboard (backend + frontend) no tiene pantalla ni endpoint
+  todavía. Scaffold base: Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack Query +
+  Recharts + Vitest.
 - **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
   `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). Ver §7 para las
   decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
@@ -341,22 +365,25 @@ es obvio a partir del código.
   `InitialCreate`, `AddFacility`, `AddEnvironmentalReadingsThresholdsAndAlerts`).
 - **Tests backend:** 68 en total (30 Domain + 23 Application + 15 Api.IntegrationTests), todos en
   verde en local y en el `Backend CI` de GitHub tras cada push de esta sesión.
-- **Tests frontend:** 9 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
-  (login: render, error de credenciales, sesión persistida) más
-  `features/facilities/FacilitiesPage.test.tsx` (formulario de alta y control de estado visibles
-  para Admin, ocultos para Operator), con `httpClient` mockeado en todos.
+- **Tests frontend:** 13 en total — `lib/authStorage.test.ts` y `features/auth/LoginPage.test.tsx`
+  (login), `features/facilities/FacilitiesPage.test.tsx` (permisos por rol), y
+  `features/environmental-params/RecordReadingForm.test.tsx` +
+  `features/environmental-params/ThresholdsPage.test.tsx` (alertas disparadas en la respuesta,
+  permisos por rol), con `httpClient` mockeado en todos.
 - Las tres rebanadas de backend (Auth, Facility, EnvironmentalReading) se verificaron no solo con
   `dotnet test`, sino también contra el stack 100% dockerizado (`docker compose up`) hablando con
-  Postgres real — incluyendo el flujo completo umbral→lectura→alerta.
+  Postgres real — incluyendo el flujo completo umbral→lectura→alerta. Lo mismo del lado frontend,
+  contra ese mismo backend real (ver entradas de arriba).
 
 **En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Rafael revisa login + facilities en un navegador real (esta sesión no pudo — sin herramienta de
-   automatización de navegador disponible; todo lo demás sí se verificó contra el backend real).
-2. Conectar `environmental-params`/`alerts` (registrar lectura, ver alertas activas), reutilizando el
-   patrón de las dos rebanadas ya hechas (`features/<x>/api.ts` + componentes de esa carpeta +
-   `getApiErrorMessage` para errores).
+1. Rafael revisa toda la app en un navegador real (login, facilities, readings/alerts, thresholds) —
+   esta sesión no pudo, sin herramienta de automatización de navegador disponible; todo lo demás sí
+   se verificó contra el backend real vía `curl`/`docker compose`.
+2. Decidir Dashboard (Fase 1, backend: endpoint de resumen/métricas + frontend) vs. saltar a Fase 2
+   (turnos/personal, incidencias, alimentación, trazabilidad de lote) — con esto el frontend ya
+   cubre funcionalmente todo lo que el backend expone hoy.
 3. Cuando esas pantallas existan: decidir Dashboard (Fase 1) vs. saltar a Fase 2
    (turnos/personal, incidencias, alimentación, trazabilidad de lote).
 

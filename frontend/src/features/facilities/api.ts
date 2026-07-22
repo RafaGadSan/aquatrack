@@ -9,6 +9,11 @@ async function fetchFacilities(): Promise<Facility[]> {
   return data
 }
 
+async function fetchFacility(id: string): Promise<Facility> {
+  const { data } = await httpClient.get<Facility>(`/api/facilities/${id}`)
+  return data
+}
+
 async function createFacility(request: CreateFacilityRequest): Promise<Facility> {
   const { data } = await httpClient.post<Facility>('/api/facilities', request)
   return data
@@ -21,6 +26,10 @@ async function updateFacilityStatus(id: string, request: UpdateFacilityStatusReq
 
 export function useFacilities() {
   return useQuery({ queryKey: facilitiesKey, queryFn: fetchFacilities })
+}
+
+export function useFacility(id: string) {
+  return useQuery({ queryKey: [...facilitiesKey, id], queryFn: () => fetchFacility(id) })
 }
 
 export function useCreateFacility() {

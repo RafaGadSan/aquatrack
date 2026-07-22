@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useFacilities, useUpdateFacilityStatus } from './api'
 import { CreateFacilityForm } from './CreateFacilityForm'
@@ -46,7 +47,11 @@ export function FacilitiesPage() {
           <tbody>
             {facilities.map((facility) => (
               <tr key={facility.id} className="border-t border-slate-100">
-                <td className="px-4 py-2 font-medium text-slate-800">{facility.name}</td>
+                <td className="px-4 py-2 font-medium text-slate-800">
+                  <Link to={`/facilities/${facility.id}`} className="text-sky-700 hover:underline">
+                    {facility.name}
+                  </Link>
+                </td>
                 <td className="px-4 py-2 text-slate-600">{facility.type}</td>
                 <td className="px-4 py-2 text-slate-600">{facility.location ?? '—'}</td>
                 <td className="px-4 py-2">
