@@ -161,7 +161,7 @@ docker compose down
 - **2026-07-22** — Roles en código en inglés: `Admin`, `ShiftLead`, `Operator` (en el documento
   original: Admin, JefeDeTurno, Operario). Por la convención de código en inglés de la sección de
   convenciones; la UI puede mostrar las etiquetas traducidas sin que el enum/rol en backend use
-  español. **Pendiente de confirmar con Rafael** si prefiere mantener esos nombres exactos u otros.
+  español. Ya implementado (migración + seed data), no solo propuesto.
 - **2026-07-22** — Fase 1 modela solo `Facility` (con su propio `FacilityStatus`:
   Empty/Active/Harvesting); la entidad `Batch`/lote con trazabilidad completa (siembra→cosecha,
   especie, eventos históricos) se deja para Fase 2. Confirmado explícitamente con Rafael para no
@@ -177,68 +177,94 @@ docker compose down
 - **2026-07-22** — Entidades de dominio con constructor privado sin parámetros (para EF Core) +
   constructor público con invariantes, setters privados, y una clase base `Entity` con igualdad por
   Id. Patrón DDD estándar; evita entidades anémicas y deja las reglas de negocio dentro del dominio.
+- **2026-07-22** — Rebanada vertical de Auth: **solo Login en Fase 1**, sin endpoint público de
+  registro. Confirmado con Rafael: la gestión de usuarios es explícitamente un ítem de Fase 2
+  ("solo Admin"), y encaja mejor con el dominio (herramienta operativa interna, no alta pública).
+  Los usuarios de Fase 1 vienen de `DbInitializer` (seed, un usuario por rol).
+- **2026-07-22** — `AuthService.LoginAsync` devuelve `Result<AuthResponse>` (éxito/fallo con
+  mensaje) en vez de lanzar una excepción para "credenciales inválidas": es un resultado de negocio
+  esperado, no una violación de invariante. Se reserva `DomainException` para invariantes reales.
+  `Application/Common/Result.cs` es un patrón reutilizable pensado para las próximas rebanadas.
+- **2026-07-22** — Hash de contraseñas vía `Microsoft.AspNetCore.Identity.PasswordHasher<User>`
+  (PBKDF2, del paquete `Microsoft.Extensions.Identity.Core`) en vez de implementar hashing a mano.
+  JWT vía `System.IdentityModel.Tokens.Jwt`, firma HS256, expiración de 8h (duración de un turno) y
+  **sin refresh tokens** en el MVP — simplificación deliberada; revisar si hace falta rotación de
+  tokens más adelante.
+- **2026-07-22** — `AquaTrackDbContext` solo mapea `User` por ahora. Las demás entidades de dominio
+  (`Facility`, `EnvironmentalReading`, `ParameterThreshold`, `Alert`) ya existen en `Domain` pero se
+  mapean/migran en sus propias rebanadas verticales, no todas de golpe.
+- **2026-07-22** — Migraciones EF Core y seed de datos demo se ejecutan automáticamente al arrancar
+  la Api (`Program.cs`, antes de `app.Run()`). Simplificación deliberada para una demo de portfolio
+  de una sola instancia — en un despliegue real esto sería un paso de release separado, no algo que
+  ocurra en cada arranque. Este bloque se **salta bajo el entorno `"Testing"`** para que los tests de
+  integración puedan sustituir su propio DbContext (SQLite) sin que esto compita con una migración
+  real de Postgres.
+- **2026-07-22** — `JwtSettings` se resuelve vía `IOptions<JwtSettings>` dentro de un
+  `.Configure<IOptions<JwtSettings>>(...)` perezoso, **no** leyendo `builder.Configuration` en una
+  variable local antes de `builder.Build()`. Motivo (bug real encontrado y corregido): una lectura
+  anticipada no ve las fuentes de configuración que `WebApplicationFactory` añade para los tests de
+  integración, que se componen más tarde en el pipeline de construcción del host — con la lectura
+  anticipada, el secreto JWT llegaba vacío solo en tests, dando un 500 críptico. La forma perezosa
+  es además más correcta en general, no solo un parche para tests.
+- **2026-07-22** — Validación de arranque: `Jwt:Secret` debe tener ≥32 bytes (256 bits, mínimo de
+  HS256); si no, la app falla al arrancar con un mensaje claro (`ValidateOnStart`) en vez de un 500
+  la primera vez que alguien hace login. El `.env.example` original tenía un secreto de 26
+  caracteres — se corrigió a uno más largo.
+- **2026-07-22** — Puerto host de Postgres en `docker-compose.yml` remapeado de 5432 a **5433**
+  (`POSTGRES_HOST_PORT`, con default). Motivo (encontrado en esta misma máquina): un Postgres nativo
+  (no Docker) ya escuchaba en 5432, y una API corriendo localmente con `dotnet run` se conectaba al
+  Postgres equivocado sin ningún error de Docker — solo un fallo de autenticación confuso. El
+  contenedor sigue siendo accesible como `postgres:5432` en la red interna de Docker; solo cambia el
+  mapeo de puerto del host.
+- **2026-07-22** — Enums serializados como string en JSON (`JsonStringEnumConverter` global en
+  `Program.cs`), no como el entero por defecto — un contrato de API con `"role": 0` es frágil ante
+  reordenar el enum. Los clientes de test deben registrar el mismo converter para deserializar.
+- **2026-07-22** — Mensajes de validación de FluentValidation forzados a inglés
+  (`ValidatorOptions.Global.LanguageManager.Enabled = false`), porque por defecto siguen la cultura
+  del SO — en esta máquina (Windows en español) salían en español, pero en el contenedor Linux
+  desplegado saldrían en inglés. Sin esto, el comportamiento de validación depende silenciosamente
+  de dónde se ejecuta.
 
 ## 8. Estado actual
 
 **Última sesión:** 2026-07-22
 
-**Hecho:**
-- Repositorio git inicializado en `aquatrack/` (rama `main`), 2 commits.
-- `.gitignore` creado (.NET + Node + Docker + env files).
-- Esqueleto de carpetas para backend (Clean Architecture) y frontend (por feature).
-- `CLAUDE.md`, `PROGRESS.md`, `README.md` creados.
-- **Backend scaffoldeado y compilando:** `backend/AquaTrack.sln` con
-  `AquaTrack.Domain`/`AquaTrack.Application`/`AquaTrack.Infrastructure`/`AquaTrack.Api` (webapi con
-  controllers) + 3 proyectos de test xUnit, todos referenciados en la solución y con las referencias
-  de proyecto correctas (Application→Domain, Infrastructure→Application, Api→Application+Infrastructure).
-  Paquetes base instalados: EF Core 8.0.11 + Npgsql provider + Design (Infrastructure),
-  FluentValidation 11.9.2 (Application), JWT Bearer 8.0.11 (Api), Moq (tests unitarios),
-  Mvc.Testing (integration tests). Boilerplate de plantilla (WeatherForecast, Class1, UnitTest1)
-  eliminado. `dotnet build` verificado sin errores/warnings.
-- **Frontend scaffoldeado y compilando:** Vite 8 + React 19 + TypeScript, fusionado dentro de la
-  estructura por feature ya existente. Tailwind CSS v4 vía `@tailwindcss/vite`, React Router,
-  TanStack Query, Recharts, Axios instalados. Vitest + React Testing Library + jsdom configurados
-  (`vite.config.ts` con bloque `test`). `npm run build` y `npm run lint` verificados sin errores.
-  `App.tsx`/`index.css` limpiados del contenido de demo de Vite.
-- Ningún DbContext, entidad de dominio, controller ni componente de negocio todavía — solo
-  estructura y dependencias base (según lo pactado: "antes de escribir la primera línea de lógica
-  de negocio").
+**Resumen del proyecto a día de hoy:** Fase 0 (setup) completa. Del checklist de Fase 1 MVP están
+hechos el modelo de dominio y la rebanada vertical de Auth (login); quedan CRUD de instalaciones,
+parámetros ambientales, alertas y dashboard. El detalle línea a línea de qué se tocó en cada sesión
+vive en el historial de git (`git log --oneline`), no hace falta repetirlo aquí — esta sección solo
+recoge el estado y lo que no es obvio a partir del código.
 
-- **Docker + CI completados (Fase 0 cerrada):** `docker-compose.yml` en la raíz con `postgres`
-  (16-alpine, healthcheck), `backend` (Dockerfile multi-stage SDK→aspnet runtime) y `frontend`
-  (Dockerfile multi-stage node build→Nginx). `.env.example` con las variables (credenciales de
-  Postgres, `JWT_SECRET`, `VITE_API_URL`). Verificado end-to-end: `docker compose build` +
-  `docker compose up -d` levanta los 3 servicios y responden por HTTP (frontend 200, backend
-  `/swagger` 200, postgres healthy).
-- Dos workflows de GitHub Actions (`.github/workflows/backend-ci.yml`,
-  `frontend-ci.yml`), cada uno disparado solo por cambios en su carpeta (`paths:`). Backend:
-  restore+build+test con .NET 8. Frontend: `npm ci` + lint (oxlint) + `vitest run --passWithNoTests`
-  + build.
-- **Repo remoto creado y primer push hecho:** https://github.com/RafaGadSan/aquatrack (público,
-  vía `gh repo create --source=. --remote=origin`). Los dos workflows de CI corrieron de verdad
-  contra el push inicial y terminaron en verde (`Backend CI` ~41s, `Frontend CI` ~19s) — confirma
-  que el pipeline no es solo teórico.
-- **Modelo de dominio de Fase 1 implementado** en `backend/src/AquaTrack.Domain/`: entidades
-  `User`, `Facility`, `EnvironmentalReading`, `ParameterThreshold`, `Alert` (+ `Common/Entity` base
-  y `Exceptions/DomainException`), enums `Role`/`FacilityType`/`FacilityStatus`/
-  `EnvironmentalParameter`/`AlertStatus`, y el servicio de dominio `Services/AlertEvaluator` que
-  calcula qué alertas disparar a partir de una lectura + los umbrales aplicables. 30 unit tests en
-  `AquaTrack.Domain.Tests` (invariantes de entidades, límites de `ParameterThreshold`, reglas de
-  `AlertEvaluator`), todos en verde tanto en local como en el `Backend CI` del push. Ver §7 para las
-  decisiones de diseño (Facility-only en Fase 1, umbrales globales vs. por instalación, validación
-  estructural vs. de negocio en `EnvironmentalReading`).
-- Todavía sin `DbContext`/persistencia, sin capa `Application` (casos de uso/DTOs) ni controllers —
-  el dominio existe pero no hay forma de guardarlo ni exponerlo todavía.
+**Hecho hasta ahora (por área):**
+- **Repo y CI:** repo público en https://github.com/RafaGadSan/aquatrack, monorepo, `.gitignore`,
+  Docker Compose (postgres + backend + frontend) y dos workflows de GitHub Actions
+  (`backend-ci.yml`, `frontend-ci.yml`) — ambos verificados en verde contra pushes reales, no solo
+  localmente.
+- **Frontend:** scaffold Vite 8 + React 19 + TS + Tailwind v4 + React Router + TanStack Query +
+  Recharts + Vitest, sin features de negocio todavía.
+- **Backend — Dominio (Fase 1):** entidades `User`, `Facility`, `EnvironmentalReading`,
+  `ParameterThreshold`, `Alert` + servicio `AlertEvaluator` (cálculo de alertas). 30 unit tests. Ver
+  §7 para las decisiones de diseño (Facility-only, umbrales por instalación vs. globales, etc.).
+- **Backend — Auth (Fase 1, rebanada vertical completa):** `POST /api/auth/login` funcionando de
+  extremo a extremo — probado tanto con `dotnet run` local contra Postgres dockerizado como con el
+  stack 100% dockerizado (`docker compose up`). Incluye: JWT (HS256, 8h, sin refresh tokens),
+  hashing de contraseñas (PBKDF2 vía ASP.NET Core Identity), `AquaTrackDbContext` con la primera
+  migración (`InitialCreate`, solo tabla `Users`), seed de 3 usuarios demo (uno por rol — ver
+  credenciales en `DbInitializer.cs`), middleware de errores centralizado, y 11 tests (8 unit con
+  Moq + 3 integration con `WebApplicationFactory`+SQLite in-memory). Todavía **sin registro
+  público** (decisión confirmada, ver §7) — los usuarios solo existen vía seed.
+- Ningún endpoint más allá de Auth (Facility, EnvironmentalReading, Alert no tienen DbContext
+  mapping, repos, servicios de Application ni controllers todavía).
 
-**En qué se está trabajando ahora mismo:**
-- Nada en curso. Dominio de Fase 1 listo; siguiente incremento natural es la persistencia (EF Core
-  `DbContext` + configuración de entidades + primera migración) o la capa `Application`, según se
-  decida al retomar.
+**En qué se está trabajando ahora mismo:** nada en curso.
 
 **Próximos pasos inmediatos:**
-1. Decidir el siguiente incremento de Fase 1: `DbContext` + mapeo EF Core + primera migración
-   (para poder persistir lo modelado), o empezar por la capa `Application` (casos de uso de
-   auth/CRUD) usando el dominio en memoria/tests primero. Plantear con Rafael antes de empezar.
-2. Confirmar la decisión pendiente de nombres de roles en inglés (`Admin`/`ShiftLead`/`Operator`) — ver §7.
+1. Siguiente rebanada vertical natural: CRUD de `Facility` (Application + Infrastructure/EF mapping
+   + migración + Api controller, protegido con `[Authorize]` ahora que la auth existe) — sería el
+   primer endpoint que realmente ejercita los roles (p. ej. solo Admin/ShiftLead pueden crear).
+2. Cuando llegue esa rebanada: decidir cómo probar autorización por rol (tests de integración con un
+   token generado a medida, no solo login).
 
-**Bloqueos/problemas conocidos:** ninguno.
+**Bloqueos/problemas conocidos:** ninguno. Ver §7 para varios gotchas de entorno ya resueltos y
+documentados (puerto de Postgres, longitud mínima del secreto JWT, timing de `IOptions`) para que no
+se repitan si se tocan esas zonas otra vez.
